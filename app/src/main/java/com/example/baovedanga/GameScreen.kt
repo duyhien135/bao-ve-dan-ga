@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.onSizeChanged
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
@@ -34,10 +33,12 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -192,7 +193,7 @@ fun GameScreen(
                             start = Offset(path.pts[j - 1].first, path.pts[j - 1].second),
                             end = Offset(path.pts[j].first, path.pts[j].second),
                             strokeWidth = 44f * d,
-                            cap = Stroke.Cap.Round,
+                            cap = StrokeCap.Round,
                         )
                     }
                     // Viền đường đậm hơn một chút ở giữa.
@@ -202,7 +203,7 @@ fun GameScreen(
                             start = Offset(path.pts[j - 1].first, path.pts[j - 1].second),
                             end = Offset(path.pts[j].first, path.pts[j].second),
                             strokeWidth = 30f * d,
-                            cap = Stroke.Cap.Round,
+                            cap = StrokeCap.Round,
                         )
                     }
                 }
@@ -219,10 +220,10 @@ fun GameScreen(
                 val gapY0 = 0.38f * h
                 val gapY1 = 0.50f * h
                 fun hLine(y: Float, x0: Float, x1: Float) {
-                    if (x1 > x0) drawLine(fenceColor, Offset(x0, y), Offset(x1, y), fw, Stroke.Cap.Round)
+                    if (x1 > x0) drawLine(fenceColor, Offset(x0, y), Offset(x1, y), fw, StrokeCap.Round)
                 }
                 fun vLine(x: Float, y0: Float, y1: Float) {
-                    if (y1 > y0) drawLine(fenceColor, Offset(x, y0), Offset(x, y1), fw, Stroke.Cap.Round)
+                    if (y1 > y0) drawLine(fenceColor, Offset(x, y0), Offset(x, y1), fw, StrokeCap.Round)
                 }
                 // Cạnh trên (đường 0 đi qua).
                 if (level.pathCount >= 1) { hLine(fy0, fx0, gapX0); hLine(fy0, gapX1, fx1) } else hLine(fy0, fx0, fx1)
@@ -252,7 +253,7 @@ fun GameScreen(
                         Offset(nx + cos(Math.toRadians(a.toDouble())).toFloat() * r, ny + sin(Math.toRadians(a.toDouble())).toFloat() * r),
                         Offset(nx + cos(Math.toRadians(a.toDouble())).toFloat() * (r + 10f * d), ny + sin(Math.toRadians(a.toDouble())).toFloat() * (r + 10f * d)),
                         strokeWidth = 3f * d,
-                        cap = Stroke.Cap.Round,
+                        cap = StrokeCap.Round,
                     )
                 }
                 // Gà còn sống xếp vòng quanh tổ.
@@ -263,7 +264,7 @@ fun GameScreen(
                     drawCircle(Color.White, radius = 11f * d, center = Offset(cx, cy))
                     drawCircle(Color(0xFFE53935), radius = 4f * d, center = Offset(cx, cy - 11f * d))
                     drawCircle(Color(0xFF212121), radius = 1.8f * d, center = Offset(cx + 3.5f * d, cy - 2f * d))
-                    drawLine(Color(0xFFFF6D00), Offset(cx + 8f * d, cy + 1f * d), Offset(cx + 13f * d, cy + 3f * d), strokeWidth = 3f * d, cap = Stroke.Cap.Round)
+                    drawLine(Color(0xFFFF6D00), Offset(cx + 8f * d, cy + 1f * d), Offset(cx + 13f * d, cy + 3f * d), strokeWidth = 3f * d, cap = StrokeCap.Round)
                 }
 
                 // --- Quái ---
