@@ -111,7 +111,8 @@ fun MenuScreen(
                         "• Quái tới tổ sẽ ăn 1 con gà. Hết gà là thua ván.\n\n" +
                         "• Giết quái được xu. Thắng level được thêm xu thưởng và mở level tiếp theo.\n\n" +
                         "• Vào Cửa hàng mua vũ khí mạnh hơn: đập càng đau, giết quái càng nhanh.\n\n" +
-                        "• Cáo yếu nhất (3 máu), càng lên level càng gặp quái mạnh: sói, gấu, hổ, cá sấu, voi."
+                        "• Cáo yếu nhất (3 máu), càng lên level càng gặp quái mạnh: rắn, sói, nhện, gấu, khỉ, hổ, báo, cá sấu, sư tử, tê giác, voi, rồng.\n\n" +
+                        "• Level vô hạn: thắng là mở level tiếp, quái càng lên cao càng trâu và càng đông."
                 )
             },
             confirmButton = {
@@ -151,7 +152,9 @@ fun LevelSelectScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(LEVELS) { level ->
+            // Level vô hạn: chỉ hiện các level đã mở + level tiếp theo (đang khóa).
+            items((1..save.unlockedLevel + 1).toList()) { n ->
+                val level = levelDef(n)
                 val unlocked = level.number <= save.unlockedLevel
                 Card(
                     colors = CardDefaults.cardColors(

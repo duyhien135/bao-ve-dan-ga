@@ -33,7 +33,7 @@ class SaveManager(context: Context) {
     }
 
     fun unlockLevel(level: Int) {
-        if (level > unlockedLevel && level <= LEVELS.size) {
+        if (level > unlockedLevel) {
             unlockedLevel = level
             prefs.edit().putInt("unlocked_level", unlockedLevel).apply()
         }

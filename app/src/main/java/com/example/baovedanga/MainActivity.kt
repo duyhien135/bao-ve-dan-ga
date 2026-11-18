@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     var screen by remember { mutableStateOf(Screen.MENU) }
-                    var playingLevel by remember { mutableStateOf(LEVELS[0]) }
+                    var playingLevel by remember { mutableStateOf(levelDef(1)) }
                     // Đổi mỗi lần sang level tiếp theo để GameScreen tạo ván mới.
                     var gameKey by remember { mutableStateOf(0) }
 
@@ -60,13 +60,9 @@ class MainActivity : ComponentActivity() {
                                     save = save,
                                     onExit = { screen = Screen.MENU },
                                     onNextLevel = {
-                                        val next = LEVELS.getOrNull(playingLevel.number) // level.number là 1-based
-                                        if (next != null) {
-                                            playingLevel = next
-                                            gameKey++
-                                        } else {
-                                            screen = Screen.MENU
-                                        }
+                                        // Level vô hạn: luôn có level tiếp theo.
+                                        playingLevel = levelDef(playingLevel.number + 1)
+                                        gameKey++
                                     },
                                 )
                             }

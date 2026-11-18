@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 import kotlin.random.Random
 
@@ -15,6 +16,8 @@ class Monster(
     val type: MonsterType,
     val pathIndex: Int,
     var hp: Int,
+    val maxHp: Int, // máu tối đa (đã nhân hệ số theo level) để vẽ thanh máu
+    val coins: Int, // xu nhận khi giết (đã cộng thưởng theo level)
     var distance: Float = 0f, // quãng đường đã đi dọc đường (px)
     var x: Float = 0f,
     var y: Float = 0f,
@@ -106,8 +109,9 @@ class GameState(
     private var waveBreakTimer = 0f // thời gian nghỉ giữa 2 đợt
     private val random = Random(System.currentTimeMillis())
 
-    // Quái càng lên level càng chạy nhanh hơn một chút.
-    private val speedFactor: Float = 1f + 0.04f * (level.number - 1)
+    // Quái càng lên level càng trâu và chạy nhanh hơn (tốc độ tối đa gấp 2).
+    private val hpFactor: Float = 1f + 0.12f * (level.number - 1)
+    private val speedFactor: Float = minOf(1f + 0.04f * (level.number - 1), 2f)
 
     fun monsterRadiusPx(type: MonsterType): Float = 26f * density * type.radiusScale
 
@@ -203,12 +207,15 @@ class GameState(
         val pathIndex = random.nextInt(level.pathCount)
         val path = paths.getOrNull(pathIndex) ?: return
         val (x, y) = path.pointAt(0f)
+        val scaledHp = (type.hp * hpFactor).roundToInt()
         monsters.add(
             Monster(
                 id = nextMonsterId++,
                 type = type,
                 pathIndex = pathIndex,
-                hp = type.hp,
+                hp = scaledHp,
+                maxHp = scaledHp,
+                coins = type.coins + level.number / 2,
                 x = x,
                 y = y,
             )
@@ -240,8 +247,8 @@ class GameState(
         if (m.hp <= 0) {
             monsters.remove(m)
             kills++
-            coinsEarned += m.type.coins
-            addEffect(m.x, m.y, "+${m.type.coins} xu", 0xFFFFD54F, big = true)
+            coinsEarned += m.coins
+            addEffect(m.x, m.y, "+${m.coins} xu", 0xFFFFD54F, big = true)
         }
         return true
     }

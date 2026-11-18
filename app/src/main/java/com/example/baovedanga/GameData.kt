@@ -1,5 +1,7 @@
 package com.example.baovedanga
 
+import kotlin.random.Random
+
 // ==================== VŨ KHÍ ====================
 // damage: sát thương mỗi lần chạm. price: giá mua bằng xu (0 = có sẵn).
 data class Weapon(val id: String, val name: String, val emoji: String, val damage: Int, val price: Int)
@@ -11,6 +13,12 @@ val WEAPONS = listOf(
     Weapon("axe", "Rìu", "\uD83E\uDE93", 5, 900),
     Weapon("sword", "Kiếm", "⚔️", 8, 2000),
     Weapon("thor", "Búa Thor", "⚡", 12, 4000),
+    Weapon("trident", "Giáo", "🔱", 16, 7000),
+    Weapon("bow", "Cung", "🏹", 20, 12000),
+    Weapon("watergun", "Súng nước", "🔫", 26, 20000),
+    Weapon("bomb", "Bom", "💣", 35, 35000),
+    Weapon("fireblade", "Kiếm lửa", "🔥", 50, 60000),
+    Weapon("wand", "Gậy phép", "🪄", 70, 100000),
 )
 
 fun weaponById(id: String): Weapon = WEAPONS.firstOrNull { it.id == id } ?: WEAPONS[0]
@@ -18,6 +26,7 @@ fun weaponById(id: String): Weapon = WEAPONS.firstOrNull { it.id == id } ?: WEAP
 // ==================== QUÁI ====================
 // hp: máu. speedDp: tốc độ di chuyển (dp/giây). coins: xu nhận khi giết.
 // radiusScale: kích thước vòng tròn quái so với chuẩn. color: màu thân.
+// minLevel: quái chỉ xuất hiện từ level này trở lên.
 data class MonsterType(
     val id: String,
     val name: String,
@@ -27,15 +36,23 @@ data class MonsterType(
     val coins: Int,
     val radiusScale: Float,
     val color: Long,
+    val minLevel: Int = 1,
 )
 
 val MONSTER_TYPES = listOf(
-    MonsterType("fox", "Cáo", "\uD83E\uDD8A", 3, 55f, 5, 1.0f, 0xFFFF7043),
-    MonsterType("wolf", "Sói", "\uD83D\uDC3A", 6, 70f, 8, 1.05f, 0xFF78909C),
-    MonsterType("bear", "Gấu", "\uD83D\uDC3B", 12, 35f, 15, 1.25f, 0xFF8D6E63),
-    MonsterType("tiger", "Hổ", "\uD83D\uDC2F", 20, 60f, 25, 1.2f, 0xFFFFA000),
-    MonsterType("croc", "Cá sấu", "\uD83D\uDC0A", 30, 40f, 35, 1.3f, 0xFF558B2F),
-    MonsterType("elephant", "Voi", "\uD83D\uDC18", 45, 26f, 50, 1.5f, 0xFF90A4AE),
+    MonsterType("fox", "Cáo", "\uD83E\uDD8A", 3, 55f, 5, 1.0f, 0xFFFF7043, 1),
+    MonsterType("snake", "Rắn", "🐍", 8, 85f, 10, 0.9f, 0xFF66BB6A, 2),
+    MonsterType("wolf", "Sói", "\uD83D\uDC3A", 6, 70f, 8, 1.05f, 0xFF78909C, 2),
+    MonsterType("spider", "Nhện", "🕷️", 10, 65f, 12, 0.95f, 0xFF5D4037, 3),
+    MonsterType("bear", "Gấu", "\uD83D\uDC3B", 12, 35f, 15, 1.25f, 0xFF8D6E63, 3),
+    MonsterType("monkey", "Khỉ", "🐒", 14, 75f, 18, 1.0f, 0xFFA1887F, 4),
+    MonsterType("tiger", "Hổ", "\uD83D\uDC2F", 20, 60f, 25, 1.2f, 0xFFFFA000, 4),
+    MonsterType("leopard", "Báo", "🐆", 16, 95f, 20, 1.1f, 0xFFFBC02D, 5),
+    MonsterType("croc", "Cá sấu", "\uD83D\uDC0A", 30, 40f, 35, 1.3f, 0xFF558B2F, 6),
+    MonsterType("lion", "Sư tử", "🦁", 40, 55f, 45, 1.35f, 0xFFEF6C00, 6),
+    MonsterType("rhino", "Tê giác", "🦏", 60, 30f, 60, 1.45f, 0xFF78909C, 7),
+    MonsterType("elephant", "Voi", "\uD83D\uDC18", 45, 26f, 50, 1.5f, 0xFF90A4AE, 8),
+    MonsterType("dragon", "Rồng", "🐉", 90, 45f, 100, 1.6f, 0xFFC62828, 8),
 )
 
 fun monsterTypeById(id: String): MonsterType = MONSTER_TYPES.firstOrNull { it.id == id } ?: MONSTER_TYPES[0]
@@ -51,7 +68,8 @@ data class LevelDef(
     val chickens: Int = 5,
 )
 
-val LEVELS = listOf(
+// Level 1-10 làm tay để mở đầu dễ, khó dần đều.
+private val FIRST_LEVELS = listOf(
     LevelDef(1, 1, listOf(
         listOf(SpawnGroup("fox", 5)),
         listOf(SpawnGroup("fox", 7)),
@@ -111,6 +129,28 @@ val LEVELS = listOf(
         listOf(SpawnGroup("elephant", 2), SpawnGroup("croc", 3), SpawnGroup("tiger", 3)),
     )),
 )
+
+// Level vô hạn: 1-10 làm tay, từ 11 trở đi sinh tự động theo số level
+// (dùng Random gieo theo số level nên cùng 1 level luôn ra cùng 1 đội hình).
+// Càng lên cao càng nhiều đợt, nhiều quái, quái ra nhanh hơn, 4 đường.
+fun levelDef(number: Int): LevelDef {
+    FIRST_LEVELS.getOrNull(number - 1)?.let { return it }
+    val rng = Random(number * 7919L)
+    val available = MONSTER_TYPES.filter { it.minLevel <= number }
+    val extra = number - 10
+    val waveCount = minOf(5 + extra / 3, 8)
+    val gap = maxOf(0.6f, 1.1f - 0.02f * extra)
+    val waves = List(waveCount) {
+        val groups = mutableListOf<SpawnGroup>()
+        repeat(2 + rng.nextInt(2)) {
+            val type = available.random(rng)
+            val count = 2 + rng.nextInt(3 + extra / 2)
+            groups += SpawnGroup(type.id, count, gap)
+        }
+        groups
+    }
+    return LevelDef(number, 4, waves)
+}
 
 // Xu thưởng khi thắng level.
 fun winBonus(level: Int): Int = 10 + 15 * level

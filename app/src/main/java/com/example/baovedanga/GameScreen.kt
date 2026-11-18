@@ -285,7 +285,7 @@ fun GameScreen(
                     val barH = 5f * d
                     val barX = m.x - barW / 2f
                     val barY = m.y - r - 12f * d
-                    val frac = (m.hp.toFloat() / m.type.hp).coerceIn(0f, 1f)
+                    val frac = (m.hp.toFloat() / m.maxHp).coerceIn(0f, 1f)
                     drawRect(Color(0xFF212121), topLeft = Offset(barX, barY), size = Size(barW, barH))
                     val hpColor = when {
                         frac > 0.5f -> Color(0xFF66BB6A)
@@ -369,11 +369,7 @@ fun GameScreen(
                 )
             },
             confirmButton = {
-                if (level.number < LEVELS.size) {
-                    Button(onClick = onNextLevel) { Text("Level tiếp") }
-                } else {
-                    Button(onClick = onExit) { Text("Về menu") }
-                }
+                Button(onClick = onNextLevel) { Text("Level tiếp") }
             },
             dismissButton = {
                 Row {
