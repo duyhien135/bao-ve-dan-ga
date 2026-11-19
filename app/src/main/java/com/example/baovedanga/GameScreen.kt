@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,17 +47,18 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.awaitPointerEventScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -76,8 +78,10 @@ private fun DrawScope.drawSprite(
     val dh = ih * scale
     drawImage(
         image,
-        topLeft = Offset(centerX - dw / 2f, centerY - dh / 2f),
-        size = Size(dw, dh),
+        srcOffset = IntOffset.Zero,
+        srcSize = IntSize(image.width, image.height),
+        dstOffset = IntOffset((centerX - dw / 2f).roundToInt(), (centerY - dh / 2f).roundToInt()),
+        dstSize = IntSize(dw.roundToInt(), dh.roundToInt()),
         alpha = alpha,
         colorFilter = colorFilter,
     )
@@ -113,9 +117,9 @@ fun GameScreen(
     var rewardsApplied by remember(level.number, restartKey) { mutableStateOf(false) }
 
     // Ảnh quái, gà, vũ khí.
-    val monsterImages = MONSTER_TYPES.associate { it.id to imageResource(it.imageRes) }
-    val chickenImage = imageResource(R.drawable.chicken)
-    val weaponImages = WEAPONS.associate { it.id to imageResource(it.imageRes) }
+    val monsterImages = MONSTER_TYPES.associate { it.id to ImageBitmap.imageResource(it.imageRes) }
+    val chickenImage = ImageBitmap.imageResource(R.drawable.chicken)
+    val weaponImages = WEAPONS.associate { it.id to ImageBitmap.imageResource(it.imageRes) }
 
     // Nhận xu + mở level mới khi thắng/thua (chỉ 1 lần mỗi ván).
     // Thắng thì chuyển sang cửa hàng ngay.
@@ -215,16 +219,16 @@ fun GameScreen(
                     // Chạm đa điểm: mỗi ngón tay chạm xuống là 1 cú đánh riêng,
                     // không chờ nhấc tay nên đánh nhanh nhiều chỗ cùng lúc được.
                     .pointerInput(game) {
-                        awaitPointerEventScope {
+                        awaitEachGesture {
                             while (true) {
                                 val event = awaitPointerEvent()
                                 if (event.type == PointerEventType.Press) {
                                     for (change in event.changes) {
-                                        if (change.changedToDown()) {
-                                            game.tap(change.position.x, change.position.y)
-                                        }
+                                        game.tap(change.position.x, change.position.y)
                                     }
                                 }
+                                // Hết cử chỉ khi nhấc hết các ngón tay.
+                                if (event.type == PointerEventType.Release && event.changes.none { it.pressed }) break
                             }
                         }
                     }
