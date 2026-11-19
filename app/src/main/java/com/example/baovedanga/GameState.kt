@@ -137,6 +137,8 @@ class GameState(
         private set
 
     // Đường đi đã đổi sang px (GameScreen gọi configure khi biết kích thước).
+    // Đường sinh ngẫu nhiên mỗi trận (khác nhau hoàn toàn, không cố định).
+    private val pathDefs = randomPathSet(Random(System.currentTimeMillis()), level.pathCount)
     var paths: List<ScaledPath> = emptyList()
         private set
     var nestX: Float = 0f
@@ -151,14 +153,14 @@ class GameState(
     private var waveBreakTimer = 0f // thời gian nghỉ giữa 2 đợt
     private val random = Random(System.currentTimeMillis())
 
-    // Quái càng lên level càng trâu (tối đa gấp 5) và chạy nhanh hơn (tối đa gấp 2).
+    // Quái càng lên level càng trâu (tối đa gấp 5) và chạy nhanh hơn (tối đa gấp 2,5).
     private val hpFactor: Float = minOf(1f + 0.08f * (level.number - 1), 5f)
-    private val speedFactor: Float = minOf(1f + 0.03f * (level.number - 1), 2f)
+    private val speedFactor: Float = minOf(1f + 0.05f * (level.number - 1), 2.5f)
 
     fun monsterRadiusPx(type: MonsterType): Float = 26f * density * type.radiusScale
 
     fun configure(widthPx: Float, heightPx: Float) {
-        paths = PATH_POINTS.map { pts ->
+        paths = pathDefs.map { pts ->
             ScaledPath(pts.map { (nx, ny) -> nx * widthPx to ny * heightPx })
         }
         nestX = NEST_X * widthPx
@@ -261,7 +263,7 @@ class GameState(
         val (x, y) = path.pointAt(0f)
         val scaledHp = (type.hp * hpFactor).roundToInt()
         // Mỗi con tốc độ khác nhau (0,85-1,25 lần) và càng về đợt sau càng nhanh.
-        val waveSpeed = minOf(1f + 0.06f * waveIndex, 1.5f)
+        val waveSpeed = minOf(1f + 0.12f * waveIndex, 2.0f)
         val speedMul = (0.85f + random.nextFloat() * 0.4f) * waveSpeed
         monsters.add(
             Monster(

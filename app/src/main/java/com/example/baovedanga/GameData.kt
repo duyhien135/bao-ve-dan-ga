@@ -50,19 +50,19 @@ data class MonsterType(
 )
 
 val MONSTER_TYPES = listOf(
-    MonsterType("fox", "Cáo", "\uD83E\uDD8A", 3, 55f, 5, 1.0f, 0xFFFF7043, 1, R.drawable.mon_fox),
-    MonsterType("snake", "Rắn", "🐍", 8, 85f, 10, 0.9f, 0xFF66BB6A, 6, R.drawable.mon_snake),
-    MonsterType("wolf", "Sói", "\uD83D\uDC3A", 6, 70f, 8, 1.05f, 0xFF78909C, 10, R.drawable.mon_wolf),
-    MonsterType("spider", "Nhện", "🕷️", 10, 65f, 12, 0.95f, 0xFF5D4037, 15, R.drawable.mon_spider),
-    MonsterType("bear", "Gấu", "\uD83D\uDC3B", 12, 35f, 15, 1.25f, 0xFF8D6E63, 20, R.drawable.mon_bear),
-    MonsterType("monkey", "Khỉ", "🐒", 14, 75f, 18, 1.0f, 0xFFA1887F, 26, R.drawable.mon_monkey),
-    MonsterType("tiger", "Hổ", "\uD83D\uDC2F", 20, 60f, 25, 1.2f, 0xFFFFA000, 32, R.drawable.mon_tiger),
-    MonsterType("leopard", "Báo", "🐆", 16, 95f, 20, 1.1f, 0xFFFBC02D, 38, R.drawable.mon_leopard),
-    MonsterType("croc", "Cá sấu", "\uD83D\uDC0A", 30, 40f, 35, 1.3f, 0xFF558B2F, 45, R.drawable.mon_croc),
-    MonsterType("lion", "Sư tử", "🦁", 40, 55f, 45, 1.35f, 0xFFEF6C00, 52, R.drawable.mon_lion),
-    MonsterType("rhino", "Tê giác", "🦏", 60, 30f, 60, 1.45f, 0xFF78909C, 60, R.drawable.mon_rhino),
-    MonsterType("elephant", "Voi", "\uD83D\uDC18", 45, 26f, 50, 1.5f, 0xFF90A4AE, 68, R.drawable.mon_elephant),
-    MonsterType("dragon", "Rồng", "🐉", 90, 45f, 100, 1.6f, 0xFFC62828, 78, R.drawable.mon_dragon),
+    MonsterType("fox", "Cáo", "\uD83E\uDD8A", 3, 100f, 5, 1.0f, 0xFFFF7043, 1, R.drawable.mon_fox),
+    MonsterType("snake", "Rắn", "🐍", 8, 150f, 10, 0.9f, 0xFF66BB6A, 6, R.drawable.mon_snake),
+    MonsterType("wolf", "Sói", "\uD83D\uDC3A", 6, 125f, 8, 1.05f, 0xFF78909C, 10, R.drawable.mon_wolf),
+    MonsterType("spider", "Nhện", "🕷️", 10, 115f, 12, 0.95f, 0xFF5D4037, 15, R.drawable.mon_spider),
+    MonsterType("bear", "Gấu", "\uD83D\uDC3B", 12, 65f, 15, 1.25f, 0xFF8D6E63, 20, R.drawable.mon_bear),
+    MonsterType("monkey", "Khỉ", "🐒", 14, 135f, 18, 1.0f, 0xFFA1887F, 26, R.drawable.mon_monkey),
+    MonsterType("tiger", "Hổ", "\uD83D\uDC2F", 20, 110f, 25, 1.2f, 0xFFFFA000, 32, R.drawable.mon_tiger),
+    MonsterType("leopard", "Báo", "🐆", 16, 170f, 20, 1.1f, 0xFFFBC02D, 38, R.drawable.mon_leopard),
+    MonsterType("croc", "Cá sấu", "\uD83D\uDC0A", 30, 70f, 35, 1.3f, 0xFF558B2F, 45, R.drawable.mon_croc),
+    MonsterType("lion", "Sư tử", "🦁", 40, 100f, 45, 1.35f, 0xFFEF6C00, 52, R.drawable.mon_lion),
+    MonsterType("rhino", "Tê giác", "🦏", 60, 55f, 60, 1.45f, 0xFF78909C, 60, R.drawable.mon_rhino),
+    MonsterType("elephant", "Voi", "\uD83D\uDC18", 45, 45f, 50, 1.5f, 0xFF90A4AE, 68, R.drawable.mon_elephant),
+    MonsterType("dragon", "Rồng", "🐉", 90, 80f, 100, 1.6f, 0xFFC62828, 78, R.drawable.mon_dragon),
 )
 
 fun monsterTypeById(id: String): MonsterType = MONSTER_TYPES.firstOrNull { it.id == id } ?: MONSTER_TYPES[0]
@@ -87,13 +87,13 @@ fun pathCountForLevel(number: Int): Int = when {
 }
 
 // Level vô hạn, sinh tự động theo số level (Random gieo theo số level nên cùng
-// 1 level luôn ra cùng 1 đội hình). Mỗi màn 5-8 đợt (lv1 chỉ 5 đợt cho gọn).
+// 1 level luôn ra cùng 1 đội hình). Mỗi màn chỉ 3 đợt, quái chạy rất nhanh.
 // Quái mới mở rất chậm; loại mới nhất mỗi màn chỉ xuất hiện 1-3 con.
 fun levelDef(number: Int): LevelDef {
     val rng = Random(number * 7919L)
     val unlocked = MONSTER_TYPES.filter { it.minLevel <= number }
     val pathCount = pathCountForLevel(number)
-    val waveCount = minOf(5 + (number - 1) / 4, 8)
+    val waveCount = 3
     val gap = maxOf(0.7f, 1.4f - 0.02f * number)
     // Quái quen (mở được từ 5 level trước) làm chủ lực; quái mới nhất chỉ lác đác vài con.
     val common = unlocked.filter { it.minLevel <= number - 5 }.ifEmpty { unlocked }
@@ -126,30 +126,61 @@ fun levelDef(number: Int): LevelDef {
 fun winBonus(level: Int): Int = 25 + 20 * level
 
 // ==================== ĐƯỜNG QUÁI ĐI ====================
-// Màn hình ngang: đường chỉ đi ngang từ 2 bên (trái/phải) vào, gấp khúc 90 độ,
+// Màn hình ngang: đường chỉ đi ngang/dọc (gấp khúc 90 độ, không chéo),
 // các góc được bo tròn khi vẽ. Tọa độ chuẩn hóa (0..1) theo kích thước vùng chơi.
-val PATH_POINTS = listOf(
-    // Trái trên: vào từ mép trái, gấp khúc rồi tới tổ gà.
-    listOf(
-        -0.05f to 0.25f, 0.18f to 0.25f, 0.18f to 0.60f, 0.30f to 0.60f,
-        0.30f to 0.42f, 0.42f to 0.42f, 0.42f to 0.50f, 0.50f to 0.50f,
-    ),
-    // Phải dưới.
-    listOf(
-        1.05f to 0.75f, 0.82f to 0.75f, 0.82f to 0.40f, 0.70f to 0.40f,
-        0.70f to 0.58f, 0.58f to 0.58f, 0.58f to 0.50f, 0.50f to 0.50f,
-    ),
-    // Trái dưới (mở muộn).
-    listOf(
-        -0.05f to 0.78f, 0.15f to 0.78f, 0.15f to 0.45f, 0.28f to 0.45f,
-        0.28f to 0.62f, 0.40f to 0.62f, 0.40f to 0.50f, 0.50f to 0.50f,
-    ),
-    // Phải trên (mở muộn).
-    listOf(
-        1.05f to 0.22f, 0.85f to 0.22f, 0.85f to 0.55f, 0.72f to 0.55f,
-        0.72f to 0.38f, 0.60f to 0.38f, 0.60f to 0.50f, 0.50f to 0.50f,
-    ),
-)
+// Mỗi trận sinh đường ngẫu nhiên nên không trận nào giống trận nào.
+// 4 đường có 4 hướng vào tổ khác nhau: trái, phải, trên, dưới.
+private fun randY(rng: Random, lo: Float, hi: Float): Float = lo + rng.nextFloat() * (hi - lo)
+
+// y ngẫu nhiên nhưng tránh vùng giữa (để đoạn gấp khúc không bị ngắn quá).
+private fun randYOffCenter(rng: Random): Float {
+    var y = randY(rng, 0.10f, 0.90f)
+    if (y > 0.40f && y < 0.60f) y = if (y < 0.50f) y - 0.22f else y + 0.22f
+    return y
+}
+
+fun randomPathSet(rng: Random, pathCount: Int): List<List<Pair<Float, Float>>> {
+    val paths = mutableListOf<List<Pair<Float, Float>>>()
+    // Đường 0: vào từ trái, tới tổ theo hướng ngang từ trái.
+    if (pathCount >= 1) {
+        val y0 = randY(rng, 0.12f, 0.88f)
+        val x1 = randY(rng, 0.08f, 0.25f)
+        val y1 = randYOffCenter(rng)
+        val x2 = randY(rng, maxOf(x1 + 0.08f, 0.27f), 0.40f)
+        paths += listOf(
+            -0.05f to y0, x1 to y0, x1 to y1, x2 to y1, x2 to 0.50f, 0.50f to 0.50f,
+        )
+    }
+    // Đường 1: vào từ phải, tới tổ theo hướng ngang từ phải.
+    if (pathCount >= 2) {
+        val y0 = randY(rng, 0.12f, 0.88f)
+        val x1 = randY(rng, 0.75f, 0.92f)
+        val y1 = randYOffCenter(rng)
+        val x2 = randY(rng, 0.60f, minOf(x1 - 0.08f, 0.73f))
+        paths += listOf(
+            1.05f to y0, x1 to y0, x1 to y1, x2 to y1, x2 to 0.50f, 0.50f to 0.50f,
+        )
+    }
+    // Đường 2: vào từ trái, tới tổ theo hướng dọc từ trên.
+    if (pathCount >= 3) {
+        val y0 = randY(rng, 0.15f, 0.85f)
+        val x1 = randY(rng, 0.08f, 0.30f)
+        val y1 = randY(rng, 0.10f, 0.32f)
+        paths += listOf(
+            -0.05f to y0, x1 to y0, x1 to y1, 0.50f to y1, 0.50f to 0.50f,
+        )
+    }
+    // Đường 3: vào từ phải, tới tổ theo hướng dọc từ dưới.
+    if (pathCount >= 4) {
+        val y0 = randY(rng, 0.15f, 0.85f)
+        val x1 = randY(rng, 0.70f, 0.92f)
+        val y1 = randY(rng, 0.68f, 0.90f)
+        paths += listOf(
+            1.05f to y0, x1 to y0, x1 to y1, 0.50f to y1, 0.50f to 0.50f,
+        )
+    }
+    return paths
+}
 
 // Tổ gà ở giữa map (tọa độ chuẩn hóa).
 const val NEST_X = 0.50f

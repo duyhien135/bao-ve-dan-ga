@@ -18,8 +18,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,7 +34,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
@@ -40,9 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -59,11 +58,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.cos
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.roundToInt
-import kotlin.math.sin
-import kotlin.random.Random
 
 // Vẽ ảnh vừa khít trong ô vuông size×size, giữ nguyên tỉ lệ.
 private fun DrawScope.drawSprite(
@@ -90,22 +88,6 @@ private fun DrawScope.drawSprite(
     )
 }
 
-// Khoảng cách từ điểm tới đoạn thẳng (để tránh trồng cây lên đường).
-private fun distToSegment(
-    px: Float, py: Float,
-    x0: Float, y0: Float, x1: Float, y1: Float,
-): Float {
-    val dx = x1 - x0
-    val dy = y1 - y0
-    val lenSq = dx * dx + dy * dy
-    val t = if (lenSq == 0f) 0f else (((px - x0) * dx + (py - y0) * dy) / lenSq).coerceIn(0f, 1f)
-    val cx = x0 + t * dx
-    val cy = y0 + t * dy
-    val ddx = px - cx
-    val ddy = py - cy
-    return kotlin.math.sqrt(ddx * ddx + ddy * ddy)
-}
-
 @Composable
 fun GameScreen(
     level: LevelDef,
@@ -119,13 +101,27 @@ fun GameScreen(
     val game = remember(level.number, restartKey) { GameState(level, weapon, density) }
     var rewardsApplied by remember(level.number, restartKey) { mutableStateOf(false) }
 
-    // Ảnh quái, gà, vũ khí, nền cỏ: nạp 1 lần bằng BitmapFactory rồi đổi sang ImageBitmap.
+    // Ảnh quái, gà, vũ khí: nạp 1 lần bằng BitmapFactory rồi đổi sang ImageBitmap.
     val context = LocalContext.current
     val monsterImages = remember { MONSTER_TYPES.associate { it.id to BitmapFactory.decodeResource(context.resources, it.imageRes).asImageBitmap() } }
     val nestImage = remember { BitmapFactory.decodeResource(context.resources, R.drawable.nest_empty).asImageBitmap() }
     val chickImage = remember { BitmapFactory.decodeResource(context.resources, R.drawable.chick).asImageBitmap() }
-    val grassImage = remember { BitmapFactory.decodeResource(context.resources, R.drawable.bg_grass).asImageBitmap() }
     val weaponImages = remember { WEAPONS.associate { it.id to BitmapFactory.decodeResource(context.resources, it.imageRes).asImageBitmap() } }
+
+    // Cảnh tĩnh (cỏ, cây, rau, đường đá, hàng rào) vẽ 1 lần vào bitmap ở
+    // luồng nền, rồi mỗi khung hình chỉ việc vẽ lại bitmap cho mượt.
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    var bgBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(canvasSize, game) {
+        val w = canvasSize.width
+        val h = canvasSize.height
+        if (w > 0 && h > 0) {
+            if (game.paths.isEmpty()) game.configure(w.toFloat(), h.toFloat())
+            bgBitmap = withContext(Dispatchers.Default) {
+                renderStaticScene(w, h, density, game.paths, level.pathCount)
+            }
+        }
+    }
 
     // Nhận xu + mở level mới khi thắng/thua (chỉ 1 lần mỗi ván).
     // Thắng thì chuyển sang cửa hàng ngay.
@@ -195,7 +191,7 @@ fun GameScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF2E7D32))
+                .background(Color(0xFF1B5E20))
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -215,13 +211,18 @@ fun GameScreen(
                 Text("⏸", fontSize = 22.sp)
             }
         }
+        // Viền vàng dưới thanh HUD.
+        Box(modifier = Modifier.fillMaxWidth().height(3.dp).background(Color(0xFFFFD54F)))
 
         // ===== VÙNG CHƠI =====
         Box(modifier = Modifier.weight(1f)) {
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
-                    .onSizeChanged { game.configure(it.width.toFloat(), it.height.toFloat()) }
+                    .onSizeChanged {
+                        canvasSize = it
+                        game.configure(it.width.toFloat(), it.height.toFloat())
+                    }
                     // Chạm đa điểm: mỗi ngón tay chạm xuống là 1 cú đánh riêng,
                     // không chờ nhấc tay nên đánh nhanh nhiều chỗ cùng lúc được.
                     .pointerInput(game) {
@@ -246,281 +247,18 @@ fun GameScreen(
                 val d = density
                 val now = System.currentTimeMillis()
 
-                val fx0 = FENCE_LEFT * w
-                val fx1 = FENCE_RIGHT * w
-                val fy0 = FENCE_TOP * h
-                val fy1 = FENCE_BOTTOM * h
-
-                // --- Nền cỏ chi tiết (ảnh thật, phủ kín màn hình) ---
-                val gw = grassImage.width.toFloat()
-                val gh = grassImage.height.toFloat()
-                val gScale = maxOf(w / gw, h / gh)
-                val gDw = (gw * gScale).roundToInt()
-                val gDh = (gh * gScale).roundToInt()
-                drawImage(
-                    grassImage,
-                    srcOffset = IntOffset.Zero,
-                    srcSize = IntSize(grassImage.width, grassImage.height),
-                    dstOffset = IntOffset(((w - gDw) / 2f).roundToInt(), ((h - gDh) / 2f).roundToInt()),
-                    dstSize = IntSize(gDw, gDh),
-                )
-                // --- Rừng: cây (tránh hàng rào và đường) ---
-                val treeRandom = Random(42)
-                repeat(40) {
-                    val tx = treeRandom.nextFloat() * w
-                    val ty = treeRandom.nextFloat() * h
-                    if (tx > fx0 - 24f * d && tx < fx1 + 24f * d &&
-                        ty > fy0 - 24f * d && ty < fy1 + 24f * d
-                    ) return@repeat
-                    var onPath = false
-                    for (i in 0 until level.pathCount) {
-                        val path = game.paths.getOrNull(i) ?: continue
-                        for (j in 1 until path.pts.size) {
-                            if (distToSegment(tx, ty, path.pts[j - 1].first, path.pts[j - 1].second, path.pts[j].first, path.pts[j].second) < 36f * d) {
-                                onPath = true
-                                break
-                            }
-                        }
-                        if (onPath) break
-                    }
-                    if (onPath) return@repeat
-                    val tr = (12f + treeRandom.nextFloat() * 9f) * d
-                    drawCircle(Color(0xFF1B5E20), radius = tr, center = Offset(tx, ty))
-                    drawCircle(Color(0xFF388E3C), radius = tr * 0.6f, center = Offset(tx - tr * 0.2f, ty - tr * 0.2f))
-                }
-
-                // --- Vườn rau trong hàng rào: rau mọc trên cỏ, mỗi cây có ụ đất nhỏ ---
-                // (Không tô nền xanh nhạt nữa để cỏ chi tiết hiện ra.)
-                // Luống rau đẹp: cà rốt, bắp cải, cà chua xen kẽ.
-                val vegRandom = Random(7)
-                var ry = fy0 + 26f * d
-                while (ry < fy1 - 14f * d) {
-                    var rx = fx0 + 22f * d
-                    while (rx < fx1 - 14f * d) {
-                        val dx = rx - NEST_X * w
-                        val dy = ry - NEST_Y * h
-                        if (dx * dx + dy * dy > (85f * d) * (85f * d)) {
-                            // Ụ đất nhỏ dưới gốc rau.
-                            drawOval(Color(0xFF8D6E63), topLeft = Offset(rx - 11f * d, ry + 2f * d), size = Size(22f * d, 10f * d))
-                            when (vegRandom.nextInt(3)) {
-                                0 -> { // Cà rốt: củ cam + lá xanh.
-                                    val p = Path().apply {
-                                        moveTo(rx - 6f * d, ry - 4f * d)
-                                        lineTo(rx + 6f * d, ry - 4f * d)
-                                        lineTo(rx, ry + 10f * d)
-                                        close()
-                                    }
-                                    drawPath(p, Color(0xFFEF6C00))
-                                    drawLine(Color(0xFF2E7D32), Offset(rx, ry - 4f * d), Offset(rx - 5f * d, ry - 12f * d), 2.5f * d, StrokeCap.Round)
-                                    drawLine(Color(0xFF2E7D32), Offset(rx, ry - 4f * d), Offset(rx, ry - 13f * d), 2.5f * d, StrokeCap.Round)
-                                    drawLine(Color(0xFF2E7D32), Offset(rx, ry - 4f * d), Offset(rx + 5f * d, ry - 12f * d), 2.5f * d, StrokeCap.Round)
-                                }
-                                1 -> { // Bắp cải: 3 lớp xanh.
-                                    drawCircle(Color(0xFF2E7D32), radius = 9f * d, center = Offset(rx, ry))
-                                    drawCircle(Color(0xFF66BB6A), radius = 6.5f * d, center = Offset(rx, ry))
-                                    drawCircle(Color(0xFFA5D6A7), radius = 3.5f * d, center = Offset(rx, ry))
-                                }
-                                else -> { // Cà chua đỏ + đài xanh.
-                                    drawCircle(Color(0xFFE53935), radius = 8f * d, center = Offset(rx, ry))
-                                    drawCircle(Color(0xFFEF5350), radius = 4f * d, center = Offset(rx - 2f * d, ry - 2f * d))
-                                    drawLine(Color(0xFF2E7D32), Offset(rx, ry - 8f * d), Offset(rx - 5f * d, ry - 12f * d), 2f * d, StrokeCap.Round)
-                                    drawLine(Color(0xFF2E7D32), Offset(rx, ry - 8f * d), Offset(rx + 5f * d, ry - 12f * d), 2f * d, StrokeCap.Round)
-                                }
-                            }
-                        }
-                        rx += 30f * d + vegRandom.nextFloat() * 8f * d
-                    }
-                    ry += 30f * d
-                }
-
-                // --- Đường đất gấp khúc 90° (chỉ các đường đang dùng ở level này) ---
-                // Vẽ bằng Path + Stroke join tròn nên các góc gấp khúc được bo tròn.
-                for (i in 0 until level.pathCount) {
-                    val path = game.paths.getOrNull(i) ?: continue
-                    val p = Path().apply {
-                        moveTo(path.pts[0].first, path.pts[0].second)
-                        for (j in 1 until path.pts.size) lineTo(path.pts[j].first, path.pts[j].second)
-                    }
-                    // Viền đậm -> nền đất cát -> vệt sáng ở giữa.
-                    drawPath(p, Color(0xFF5D4037), style = Stroke(width = 52f * d, cap = StrokeCap.Round, join = StrokeJoin.Round))
-                    drawPath(p, Color(0xFFC89B6A), style = Stroke(width = 46f * d, cap = StrokeCap.Round, join = StrokeJoin.Round))
-                    drawPath(p, Color(0xFFDEB887), style = Stroke(width = 26f * d, cap = StrokeCap.Round, join = StrokeJoin.Round))
-                    // Vệt bánh xe: 2 đường tối song song dọc theo đường.
-                    for (j in 1 until path.pts.size) {
-                        val (ax, ay) = path.pts[j - 1]
-                        val (bx, by) = path.pts[j]
-                        val segLen = kotlin.math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
-                        if (segLen < 1f) continue
-                        val px = -(by - ay) / segLen
-                        val py = (bx - ax) / segLen
-                        for (side in listOf(-1f, 1f)) {
-                            val off = side * 11f * d
-                            drawLine(
-                                Color(0xFF8D6E63),
-                                Offset(ax + px * off, ay + py * off),
-                                Offset(bx + px * off, by + py * off),
-                                4f * d, StrokeCap.Round,
-                            )
-                        }
-                    }
-                    // Sỏi đá lấm tấm trên đường.
-                    val pebbleRandom = Random(100 + i)
-                    for (j in 1 until path.pts.size) {
-                        val (ax, ay) = path.pts[j - 1]
-                        val (bx, by) = path.pts[j]
-                        val segLen = kotlin.math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
-                        var dist = 20f * d
-                        while (dist < segLen) {
-                            val t = dist / segLen
-                            val px = ax + (bx - ax) * t + (pebbleRandom.nextFloat() - 0.5f) * 20f * d
-                            val py = ay + (by - ay) * t + (pebbleRandom.nextFloat() - 0.5f) * 20f * d
-                            drawCircle(Color(0xFFBCAAA4), radius = (1.5f + pebbleRandom.nextFloat() * 2f) * d, center = Offset(px, py))
-                            dist += 26f * d + pebbleRandom.nextFloat() * 20f * d
-                        }
-                    }
-                    // Cỏ mọc lún phún 2 mép đường.
-                    val tuftRandom = Random(500 + i)
-                    for (j in 1 until path.pts.size) {
-                        val (ax, ay) = path.pts[j - 1]
-                        val (bx, by) = path.pts[j]
-                        val segLen = kotlin.math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
-                        if (segLen < 1f) continue
-                        val px = -(by - ay) / segLen
-                        val py = (bx - ax) / segLen
-                        var dist = 30f * d
-                        while (dist < segLen) {
-                            val t = dist / segLen
-                            val side = if (tuftRandom.nextBoolean()) 1f else -1f
-                            val off = side * (24f + tuftRandom.nextFloat() * 4f) * d
-                            val tx = ax + (bx - ax) * t + px * off
-                            val ty = ay + (by - ay) * t + py * off
-                            drawLine(Color(0xFF2E7D32), Offset(tx, ty), Offset(tx - 4f * d, ty - 7f * d), 2f * d, StrokeCap.Round)
-                            drawLine(Color(0xFF2E7D32), Offset(tx, ty), Offset(tx, ty - 8f * d), 2f * d, StrokeCap.Round)
-                            drawLine(Color(0xFF2E7D32), Offset(tx, ty), Offset(tx + 4f * d, ty - 7f * d), 2f * d, StrokeCap.Round)
-                            dist += 44f * d + tuftRandom.nextFloat() * 30f * d
-                        }
-                    }
-                }
-
-                // --- Hàng rào cọc gỗ màu cam, có khe hở ở chỗ đường đi qua ---
-                // Tìm chỗ đường cắt qua từng cạnh rào để chừa khe hở.
-                val leftGaps = mutableListOf<Float>()
-                val rightGaps = mutableListOf<Float>()
-                val topGaps = mutableListOf<Float>()
-                val bottomGaps = mutableListOf<Float>()
-                for (i in 0 until level.pathCount) {
-                    val path = game.paths.getOrNull(i) ?: continue
-                    for (j in 1 until path.pts.size) {
-                        val (x0, y0) = path.pts[j - 1]
-                        val (x1, y1) = path.pts[j]
-                        if (y0 == y1) { // đoạn ngang: cắt cạnh trái/phải
-                            if ((x0 < fx0 && x1 >= fx0) || (x1 < fx0 && x0 >= fx0)) leftGaps.add(y0)
-                            if ((x0 < fx1 && x1 >= fx1) || (x1 < fx1 && x0 >= fx1)) rightGaps.add(y0)
-                        }
-                        if (x0 == x1) { // đoạn dọc: cắt cạnh trên/dưới
-                            if ((y0 < fy0 && y1 >= fy0) || (y1 < fy0 && y0 >= fy0)) topGaps.add(x0)
-                            if ((y0 < fy1 && y1 >= fy1) || (y1 < fy1 && y0 >= fy1)) bottomGaps.add(x0)
-                        }
-                    }
-                }
-                val picketColor = Color(0xFFFF8C42)
-                val railColor = Color(0xFFEF6C00)
-                val gapR = 34f * d
-                fun nearGap(v: Float, gaps: List<Float>) = gaps.any { kotlin.math.abs(v - it) < gapR }
-                // Thanh ngang của rào: vẽ thành đoạn, chừa khe hở.
-                fun hRail(y: Float, x0: Float, x1: Float, gaps: List<Float>) {
-                    val sorted = (gaps.map { it - gapR } + gaps.map { it + gapR }).sorted()
-                    val cuts = listOf(x0) + sorted.filter { it > x0 && it < x1 } + listOf(x1)
-                    var k = 0
-                    while (k < cuts.size - 1) {
-                        val a = cuts[k]
-                        val b = cuts[k + 1]
-                        val mid = (a + b) / 2f
-                        if (!nearGap(mid, gaps) && b - a > 4f * d) {
-                            drawLine(railColor, Offset(a, y), Offset(b, y), 5f * d, StrokeCap.Round)
-                        }
-                        k++
-                    }
-                }
-                fun vRail(x: Float, y0: Float, y1: Float, gaps: List<Float>) {
-                    val sorted = (gaps.map { it - gapR } + gaps.map { it + gapR }).sorted()
-                    val cuts = listOf(y0) + sorted.filter { it > y0 && it < y1 } + listOf(y1)
-                    var k = 0
-                    while (k < cuts.size - 1) {
-                        val a = cuts[k]
-                        val b = cuts[k + 1]
-                        val mid = (a + b) / 2f
-                        if (!nearGap(mid, gaps) && b - a > 4f * d) {
-                            drawLine(railColor, Offset(x, a), Offset(x, b), 5f * d, StrokeCap.Round)
-                        }
-                        k++
-                    }
-                }
-                // 2 thanh ngang mỗi cạnh (lệch vào/ra 7dp so với mép rào).
-                hRail(fy0 - 7f * d, fx0, fx1, topGaps); hRail(fy0 + 7f * d, fx0, fx1, topGaps)
-                hRail(fy1 - 7f * d, fx0, fx1, bottomGaps); hRail(fy1 + 7f * d, fx0, fx1, bottomGaps)
-                vRail(fx0 - 7f * d, fy0, fy1, leftGaps); vRail(fx0 + 7f * d, fy0, fy1, leftGaps)
-                vRail(fx1 - 7f * d, fy0, fy1, rightGaps); vRail(fx1 + 7f * d, fy0, fy1, rightGaps)
-                // Cọc rào: thanh dọc đầu nhọn hướng ra ngoài, cách nhau 16dp.
-                fun picketH(x: Float, y: Float, up: Boolean) {
-                    val w2 = 5f * d
-                    val len = 20f * d
-                    val tip = 8f * d
-                    if (up) {
-                        drawRoundRect(picketColor, Offset(x - w2, y - len), Size(w2 * 2, len), CornerRadius(3f * d, 3f * d))
-                        val p = Path().apply {
-                            moveTo(x - w2, y - len)
-                            lineTo(x + w2, y - len)
-                            lineTo(x, y - len - tip)
-                            close()
-                        }
-                        drawPath(p, picketColor)
-                    } else {
-                        drawRoundRect(picketColor, Offset(x - w2, y), Size(w2 * 2, len), CornerRadius(3f * d, 3f * d))
-                        val p = Path().apply {
-                            moveTo(x - w2, y + len)
-                            lineTo(x + w2, y + len)
-                            lineTo(x, y + len + tip)
-                            close()
-                        }
-                        drawPath(p, picketColor)
-                    }
-                }
-                fun picketV(x: Float, y: Float, left: Boolean) {
-                    val w2 = 5f * d
-                    val len = 20f * d
-                    val tip = 8f * d
-                    if (left) {
-                        drawRoundRect(picketColor, Offset(x - len, y - w2), Size(len, w2 * 2), CornerRadius(3f * d, 3f * d))
-                        val p = Path().apply {
-                            moveTo(x - len, y - w2)
-                            lineTo(x - len, y + w2)
-                            lineTo(x - len - tip, y)
-                            close()
-                        }
-                        drawPath(p, picketColor)
-                    } else {
-                        drawRoundRect(picketColor, Offset(x, y - w2), Size(len, w2 * 2), CornerRadius(3f * d, 3f * d))
-                        val p = Path().apply {
-                            moveTo(x + len, y - w2)
-                            lineTo(x + len, y + w2)
-                            lineTo(x + len + tip, y)
-                            close()
-                        }
-                        drawPath(p, picketColor)
-                    }
-                }
-                var px = fx0 + 8f * d
-                while (px < fx1) {
-                    if (!nearGap(px, topGaps)) picketH(px, fy0, true)
-                    if (!nearGap(px, bottomGaps)) picketH(px, fy1, false)
-                    px += 16f * d
-                }
-                var py = fy0 + 8f * d
-                while (py < fy1) {
-                    if (!nearGap(py, leftGaps)) picketV(fx0, py, true)
-                    if (!nearGap(py, rightGaps)) picketV(fx1, py, false)
-                    py += 16f * d
+                // --- Cảnh tĩnh (đã vẽ sẵn vào bitmap) ---
+                val bg = bgBitmap
+                if (bg != null) {
+                    drawImage(
+                        bg,
+                        srcOffset = IntOffset.Zero,
+                        srcSize = IntSize(bg.width, bg.height),
+                        dstOffset = IntOffset.Zero,
+                        dstSize = IntSize(w.roundToInt(), h.roundToInt()),
+                    )
+                } else {
+                    drawRect(Color(0xFF558B2F))
                 }
 
                 // --- Tổ gà: tổ rơm + 5 gà con ngồi trong tổ, mất con nào thì vắng con đó ---
@@ -644,11 +382,13 @@ fun GameScreen(
             WaveBanner(game)
         }
 
+        // Viền vàng trên thanh vũ khí.
+        Box(modifier = Modifier.fillMaxWidth().height(3.dp).background(Color(0xFFFFD54F)))
         // ===== THANH VŨ KHÍ =====
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF2E7D32))
+                .background(Color(0xFF1B5E20))
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -671,15 +411,22 @@ fun GameScreen(
     if (game.status == GameStatus.PAUSED) {
         AlertDialog(
             onDismissRequest = { game.resume() },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = Color(0xFF1B5E20),
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFC8E6C9),
             title = { Text("⏸ Tạm dừng") },
             text = { Text("Level ${level.number} — Đợt ${game.waveIndex + 1}/${level.waves.size}\nGà còn lại: ${game.chickens}") },
             confirmButton = {
-                Button(onClick = { game.resume() }) { Text("Tiếp tục") }
+                Button(
+                    onClick = { game.resume() },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF8C42)),
+                ) { Text("Tiếp tục") }
             },
             dismissButton = {
                 Row {
-                    TextButton(onClick = { restartKey++ }) { Text("Chơi lại") }
-                    TextButton(onClick = onExit) { Text("Về menu") }
+                    TextButton(onClick = { restartKey++ }) { Text("Chơi lại", color = Color.White) }
+                    TextButton(onClick = onExit) { Text("Về menu", color = Color.White) }
                 }
             },
         )
@@ -689,6 +436,10 @@ fun GameScreen(
     if (game.status == GameStatus.LOST) {
         AlertDialog(
             onDismissRequest = {},
+            shape = RoundedCornerShape(20.dp),
+            containerColor = Color(0xFF1B5E20),
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFC8E6C9),
             title = { Text("😢 Thua rồi!") },
             text = {
                 Text(
@@ -697,10 +448,13 @@ fun GameScreen(
                 )
             },
             confirmButton = {
-                Button(onClick = { restartKey++ }) { Text("Chơi lại") }
+                Button(
+                    onClick = { restartKey++ },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF8C42)),
+                ) { Text("Chơi lại") }
             },
             dismissButton = {
-                TextButton(onClick = onExit) { Text("Về menu") }
+                TextButton(onClick = onExit) { Text("Về menu", color = Color.White) }
             },
         )
     }
