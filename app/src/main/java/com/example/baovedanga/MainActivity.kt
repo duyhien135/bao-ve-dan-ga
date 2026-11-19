@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,6 +23,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
+                    val soundManager = remember { SoundManager(applicationContext) }
+                    DisposableEffect(Unit) {
+                        onDispose { soundManager.release() }
+                    }
                     var screen by remember { mutableStateOf(Screen.MENU) }
                     var playingLevel by remember { mutableStateOf(levelDef(1)) }
                     // Đổi mỗi lần vào màn mới để GameScreen tạo ván mới.
@@ -33,6 +38,7 @@ class MainActivity : ComponentActivity() {
                     when (screen) {
                         Screen.MENU -> MenuScreen(
                             save = save,
+                            soundManager = soundManager,
                             // Chỉ chơi màn đang chơi (màn đã mở cao nhất); chơi mới thì là màn 1.
                             onPlay = {
                                 playingLevel = levelDef(save.unlockedLevel)
@@ -49,6 +55,7 @@ class MainActivity : ComponentActivity() {
                             BackHandler { screen = Screen.MENU }
                             ShopScreen(
                                 save = save,
+                                soundManager = soundManager,
                                 onBack = { screen = Screen.MENU },
                                 showNext = shopFromWin,
                                 winInfo = winInfo,
@@ -65,6 +72,7 @@ class MainActivity : ComponentActivity() {
                                     level = playingLevel,
                                     weapon = save.selectedWeapon,
                                     save = save,
+                                    soundManager = soundManager,
                                     onExit = { screen = Screen.MENU },
                                     onWin = { totalCoins ->
                                         winInfo = "🎉 Thắng level ${playingLevel.number}! +$totalCoins xu"
