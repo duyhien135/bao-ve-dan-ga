@@ -207,26 +207,28 @@ fun renderStaticScene(
         ry += 30f * d
     }
 
-    // ===== 5. ĐƯỜNG ĐÁ LÁT (chỉ các đường đang dùng ở level này) =====
+    // ===== 5. ĐƯỜNG ĐẤT MÒN + ĐÁ CUỘI 3D (chỉ các đường đang dùng ở level này) =====
     val stoneColors = intArrayOf(
         0xFF9E9E9E.toInt(), 0xFF8D8D8D.toInt(), 0xFFA1887F.toInt(),
         0xFFB0A090.toInt(), 0xFF8D7B68.toInt(), 0xFFBCAAA4.toInt(),
     )
-    val stoneRect = RectF()
     for (i in 0 until pathCount) {
         val path = paths.getOrNull(i) ?: continue
         val p = Path().apply {
             moveTo(path.pts[0].first, path.pts[0].second)
             for (j in 1 until path.pts.size) lineTo(path.pts[j].first, path.pts[j].second)
         }
-        // Viền đậm + nền đất cát.
+        // Đất mòn: viền nâu đậm + nền đất + vệt mòn sáng ở giữa.
         strokePaint.color = 0xFF4E342E.toInt()
-        strokePaint.strokeWidth = 54f * d
+        strokePaint.strokeWidth = 56f * d
         c.drawPath(p, strokePaint)
-        strokePaint.color = 0xFFC89B6A.toInt()
-        strokePaint.strokeWidth = 48f * d
+        strokePaint.color = 0xFF8D6E63.toInt()
+        strokePaint.strokeWidth = 50f * d
         c.drawPath(p, strokePaint)
-        // Đá lát: 3 cột so le như xếp gạch.
+        strokePaint.color = 0xFFA1887F.toInt()
+        strokePaint.strokeWidth = 30f * d
+        c.drawPath(p, strokePaint)
+        // Đá cuội tròn lồi: bóng đổ + thân đá + điểm sáng, xếp so le 3 cột.
         val stoneRandom = Random(100 + i)
         for (j in 1 until path.pts.size) {
             val (ax, ay) = path.pts[j - 1]
@@ -237,28 +239,43 @@ fun renderStaticScene(
             val uy = (by - ay) / segLen
             val px = -uy
             val py = ux
-            var dist = 10f * d
+            var dist = 8f * d
             var row = 0
             while (dist < segLen) {
                 val t = dist / segLen
                 val cx = ax + (bx - ax) * t
                 val cy = ay + (by - ay) * t
                 for (col in 0 until 3) {
-                    val off = (col - 1) * 13f * d
-                    val shift = if (row % 2 == 1 && col == 1) 8.5f * d else 0f
+                    val off = (col - 1) * 14f * d + (stoneRandom.nextFloat() - 0.5f) * 5f * d
+                    val shift = if (row % 2 == 1 && col != 1) 8f * d else 0f
                     val sx = cx + px * off + ux * shift
                     val sy = cy + py * off + uy * shift
-                    val sw = (7f + stoneRandom.nextFloat() * 2f) * d
-                    val sh = (5f + stoneRandom.nextFloat() * 1.5f) * d
-                    stoneRect.set(sx - sw, sy - sh, sx + sw, sy + sh)
+                    val sr = (5f + stoneRandom.nextFloat() * 3.5f) * d
+                    fillPaint.color = Color.argb(70, 0, 0, 0)
+                    c.drawCircle(sx + 1.5f * d, sy + 2f * d, sr, fillPaint)
                     fillPaint.color = stoneColors[stoneRandom.nextInt(stoneColors.size)]
-                    c.drawRoundRect(stoneRect, 4f * d, 4f * d, fillPaint)
-                    strokePaint.color = 0xFF6D4C41.toInt()
-                    strokePaint.strokeWidth = 1f * d
-                    c.drawRoundRect(stoneRect, 4f * d, 4f * d, strokePaint)
+                    c.drawCircle(sx, sy, sr, fillPaint)
+                    fillPaint.color = Color.argb(80, 255, 255, 255)
+                    c.drawCircle(sx - sr * 0.35f, sy - sr * 0.35f, sr * 0.45f, fillPaint)
                 }
-                dist += 17f * d
+                dist += 16f * d
                 row++
+            }
+        }
+        // Lấm tấm đất: chấm tối/sáng lác đác trên mặt đường.
+        val speckRandom = Random(300 + i)
+        for (j in 1 until path.pts.size) {
+            val (ax, ay) = path.pts[j - 1]
+            val (bx, by) = path.pts[j]
+            val segLen = sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
+            var dist = 12f * d
+            while (dist < segLen) {
+                val t = dist / segLen
+                val sx = ax + (bx - ax) * t + (speckRandom.nextFloat() - 0.5f) * 40f * d
+                val sy = ay + (by - ay) * t + (speckRandom.nextFloat() - 0.5f) * 40f * d
+                fillPaint.color = if (speckRandom.nextBoolean()) Color.argb(110, 62, 39, 35) else Color.argb(100, 215, 204, 200)
+                c.drawCircle(sx, sy, (1f + speckRandom.nextFloat() * 1.5f) * d, fillPaint)
+                dist += 13f * d + speckRandom.nextFloat() * 10f * d
             }
         }
         // Đá to 2 mép đường.
@@ -287,22 +304,6 @@ fun renderStaticScene(
                 dist += 30f * d + edgeRandom.nextFloat() * 22f * d
             }
         }
-        // Sỏi nhỏ trên đường.
-        val pebbleRandom = Random(300 + i)
-        for (j in 1 until path.pts.size) {
-            val (ax, ay) = path.pts[j - 1]
-            val (bx, by) = path.pts[j]
-            val segLen = sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
-            var dist = 20f * d
-            while (dist < segLen) {
-                val t = dist / segLen
-                val px = ax + (bx - ax) * t + (pebbleRandom.nextFloat() - 0.5f) * 20f * d
-                val py = ay + (by - ay) * t + (pebbleRandom.nextFloat() - 0.5f) * 20f * d
-                fillPaint.color = 0xFFBCAAA4.toInt()
-                c.drawCircle(px, py, (1.5f + pebbleRandom.nextFloat() * 2f) * d, fillPaint)
-                dist += 26f * d + pebbleRandom.nextFloat() * 20f * d
-            }
-        }
         // Cỏ mọc lún phún 2 mép đường.
         val tuftRandom = Random(500 + i)
         for (j in 1 until path.pts.size) {
@@ -329,7 +330,7 @@ fun renderStaticScene(
         }
     }
 
-    // ===== 6. HÀNG RÀO GỖ VUÔNG VỨC, có khe hở ở chỗ đường đi qua =====
+    // ===== 6. HÀNG RÀO: tường đá chân + cọc gỗ nhọn + đèn lồng góc =====
     // Tìm chỗ đường cắt qua từng cạnh rào để chừa khe hở.
     val leftGaps = mutableListOf<Float>()
     val rightGaps = mutableListOf<Float>()
@@ -352,7 +353,51 @@ fun renderStaticScene(
     }
     val gapR = 34f * d
     fun nearGap(v: Float, gaps: List<Float>) = gaps.any { kotlin.math.abs(v - it) < gapR }
-    // Thanh ngang: vẽ thành đoạn, chừa khe hở; kèm bóng đổ + vân gỗ.
+    // Bóng đổ mặt đất dọc theo toàn bộ hàng rào.
+    strokePaint.color = Color.argb(35, 0, 0, 0)
+    strokePaint.strokeWidth = 22f * d
+    val fenceRect = Path().apply {
+        moveTo(fx0, fy0); lineTo(fx1, fy0); lineTo(fx1, fy1); lineTo(fx0, fy1); close()
+    }
+    c.drawPath(fenceRect, strokePaint)
+    // Tường đá chân: hàng đá cuội tròn xếp dọc rào, chừa khe hở.
+    val baseStoneColors = intArrayOf(0xFF9E9E9E.toInt(), 0xFF8D8D8D.toInt(), 0xFFA1887F.toInt(), 0xFFB0A090.toInt())
+    val baseRandom = Random(88)
+    fun baseStonesH(y: Float, gaps: List<Float>) {
+        var x = fx0 + 4f * d
+        while (x < fx1) {
+            if (!nearGap(x, gaps)) {
+                val sr = (6f + baseRandom.nextFloat() * 2f) * d
+                val jy = (baseRandom.nextFloat() - 0.5f) * 2f * d
+                fillPaint.color = Color.argb(60, 0, 0, 0)
+                c.drawOval(RectF(x - sr, y - sr * 0.72f + 2f * d + jy, x + sr, y + sr * 0.72f + 2f * d + jy), fillPaint)
+                fillPaint.color = baseStoneColors[baseRandom.nextInt(baseStoneColors.size)]
+                c.drawOval(RectF(x - sr, y - sr * 0.72f + jy, x + sr, y + sr * 0.72f + jy), fillPaint)
+                fillPaint.color = Color.argb(70, 255, 255, 255)
+                c.drawCircle(x - sr * 0.3f, y - sr * 0.3f + jy, sr * 0.3f, fillPaint)
+            }
+            x += 13f * d
+        }
+    }
+    fun baseStonesV(x: Float, gaps: List<Float>) {
+        var y = fy0 + 4f * d
+        while (y < fy1) {
+            if (!nearGap(y, gaps)) {
+                val sr = (6f + baseRandom.nextFloat() * 2f) * d
+                val jx = (baseRandom.nextFloat() - 0.5f) * 2f * d
+                fillPaint.color = Color.argb(60, 0, 0, 0)
+                c.drawOval(RectF(x - sr * 0.72f + 2f * d + jx, y - sr, x + sr * 0.72f + 2f * d + jx, y + sr), fillPaint)
+                fillPaint.color = baseStoneColors[baseRandom.nextInt(baseStoneColors.size)]
+                c.drawOval(RectF(x - sr * 0.72f + jx, y - sr, x + sr * 0.72f + jx, y + sr), fillPaint)
+                fillPaint.color = Color.argb(70, 255, 255, 255)
+                c.drawCircle(x - sr * 0.3f + jx, y - sr * 0.3f, sr * 0.3f, fillPaint)
+            }
+            y += 13f * d
+        }
+    }
+    baseStonesH(fy0, topGaps); baseStonesH(fy1, bottomGaps)
+    baseStonesV(fx0, leftGaps); baseStonesV(fx1, rightGaps)
+    // Thanh ngang nâu đậm sau lưng cọc, chừa khe hở.
     fun hRail(y: Float, x0: Float, x1: Float, gaps: List<Float>) {
         val sorted = (gaps.map { it - gapR } + gaps.map { it + gapR }).sorted()
         val cuts = listOf(x0) + sorted.filter { it > x0 && it < x1 } + listOf(x1)
@@ -365,10 +410,10 @@ fun renderStaticScene(
                 strokePaint.color = Color.argb(55, 0, 0, 0)
                 strokePaint.strokeWidth = 7f * d
                 c.drawLine(a + 2f * d, y + 3f * d, b + 2f * d, y + 3f * d, strokePaint)
-                strokePaint.color = 0xFFEF6C00.toInt()
+                strokePaint.color = 0xFF5D4037.toInt()
                 strokePaint.strokeWidth = 5f * d
                 c.drawLine(a, y, b, y, strokePaint)
-                strokePaint.color = Color.argb(110, 191, 54, 12)
+                strokePaint.color = Color.argb(110, 141, 110, 99)
                 strokePaint.strokeWidth = 1.2f * d
                 c.drawLine(a + 2f * d, y - 1f * d, b - 2f * d, y - 1f * d, strokePaint)
             }
@@ -387,10 +432,10 @@ fun renderStaticScene(
                 strokePaint.color = Color.argb(55, 0, 0, 0)
                 strokePaint.strokeWidth = 7f * d
                 c.drawLine(x + 2f * d, a + 3f * d, x + 2f * d, b + 3f * d, strokePaint)
-                strokePaint.color = 0xFFEF6C00.toInt()
+                strokePaint.color = 0xFF5D4037.toInt()
                 strokePaint.strokeWidth = 5f * d
                 c.drawLine(x, a, x, b, strokePaint)
-                strokePaint.color = Color.argb(110, 191, 54, 12)
+                strokePaint.color = Color.argb(110, 141, 110, 99)
                 strokePaint.strokeWidth = 1.2f * d
                 c.drawLine(x - 1f * d, a + 2f * d, x - 1f * d, b - 2f * d, strokePaint)
             }
@@ -401,30 +446,132 @@ fun renderStaticScene(
     hRail(fy1 - 7f * d, fx0, fx1, bottomGaps); hRail(fy1 + 7f * d, fx0, fx1, bottomGaps)
     vRail(fx0 - 7f * d, fy0, fy1, leftGaps); vRail(fx0 + 7f * d, fy0, fy1, leftGaps)
     vRail(fx1 - 7f * d, fy0, fy1, rightGaps); vRail(fx1 + 7f * d, fy0, fy1, rightGaps)
-    // Cọc rào vuông đầu phẳng, đều nhau, mỗi cọc lệch sắc gỗ 1 chút + vân gỗ.
-    val picketShades = intArrayOf(0xFFFF8C42.toInt(), 0xFFFF9E5E.toInt(), 0xFFF57C2E.toInt())
+    // Cọc gỗ nhọn: thân + đầu nhọn tam giác + vân gỗ + mắt gỗ + đinh + dây leo.
+    val picketShades = intArrayOf(0xFF8D6E63.toInt(), 0xFF795548.toInt(), 0xFF6D4C41.toInt(), 0xFFA1887F.toInt())
     val picketRandom = Random(77)
+    fun picketShapeH(x: Float, y: Float, up: Boolean, ox: Float, oy: Float): Path {
+        val w2 = 5.5f * d
+        val len = 26f * d
+        val tip = 7f * d
+        return Path().apply {
+            if (up) {
+                moveTo(x - w2 + ox, y + oy)
+                lineTo(x - w2 + ox, y - len + tip + oy)
+                lineTo(x + ox, y - len + oy)
+                lineTo(x + w2 + ox, y - len + tip + oy)
+                lineTo(x + w2 + ox, y + oy)
+            } else {
+                moveTo(x - w2 + ox, y + oy)
+                lineTo(x - w2 + ox, y + len - tip + oy)
+                lineTo(x + ox, y + len + oy)
+                lineTo(x + w2 + ox, y + len - tip + oy)
+                lineTo(x + w2 + ox, y + oy)
+            }
+            close()
+        }
+    }
+    fun picketShapeV(x: Float, y: Float, left: Boolean, ox: Float, oy: Float): Path {
+        val w2 = 5.5f * d
+        val len = 26f * d
+        val tip = 7f * d
+        return Path().apply {
+            if (left) {
+                moveTo(x + ox, y - w2 + oy)
+                lineTo(x - len + tip + ox, y - w2 + oy)
+                lineTo(x - len + ox, y + oy)
+                lineTo(x - len + tip + ox, y + w2 + oy)
+                lineTo(x + ox, y + w2 + oy)
+            } else {
+                moveTo(x + ox, y - w2 + oy)
+                lineTo(x + len - tip + ox, y - w2 + oy)
+                lineTo(x + len + ox, y + oy)
+                lineTo(x + len - tip + ox, y + w2 + oy)
+                lineTo(x + ox, y + w2 + oy)
+            }
+            close()
+        }
+    }
     fun picketH(x: Float, y: Float, up: Boolean) {
-        val w2 = 5f * d
-        val len = 20f * d
-        val rect = if (up) RectF(x - w2, y - len, x + w2, y) else RectF(x - w2, y, x + w2, y + len)
-        fillPaint.color = picketShades[picketRandom.nextInt(picketShades.size)]
-        c.drawRoundRect(rect, 2f * d, 2f * d, fillPaint)
-        strokePaint.color = Color.argb(110, 230, 81, 0)
-        strokePaint.strokeWidth = 1f * d
-        if (up) c.drawLine(x, y - len + 3f * d, x, y - 3f * d, strokePaint)
-        else c.drawLine(x, y + 3f * d, x, y + len - 3f * d, strokePaint)
+        val len = 26f * d
+        val tip = 7f * d
+        val shade = picketShades[picketRandom.nextInt(picketShades.size)]
+        fillPaint.color = Color.argb(55, 0, 0, 0)
+        c.drawPath(picketShapeH(x, y, up, 2f * d, 3f * d), fillPaint)
+        fillPaint.color = shade
+        c.drawPath(picketShapeH(x, y, up, 0f, 0f), fillPaint)
+        // Vân gỗ: 1 đường dọc lệch tâm.
+        strokePaint.color = Color.argb(90, 62, 39, 35)
+        strokePaint.strokeWidth = 1.2f * d
+        val gx = x + (if (picketRandom.nextBoolean()) 2f else -2f) * d
+        if (up) c.drawLine(gx, y - 4f * d, gx, y - len + tip + 2f * d, strokePaint)
+        else c.drawLine(gx, y + 4f * d, gx, y + len - tip - 2f * d, strokePaint)
+        // Mắt gỗ: 1/3 cọc có.
+        if (picketRandom.nextFloat() < 0.33f) {
+            val ky = if (up) y - len * 0.55f else y + len * 0.55f
+            fillPaint.color = Color.argb(120, 62, 39, 35)
+            c.drawCircle(x, ky, 2.5f * d, fillPaint)
+            strokePaint.color = Color.argb(90, 62, 39, 35)
+            strokePaint.strokeWidth = 1f * d
+            c.drawCircle(x, ky, 4f * d, strokePaint)
+        }
+        // Đinh ở chỗ thanh ngang đi qua.
+        fillPaint.color = 0xFF3E2723.toInt()
+        c.drawCircle(x, if (up) y - 7f * d else y + 7f * d, 1.6f * d, fillPaint)
+        // Dây leo: 20% cọc có dây xanh + lá + thỉnh thoảng hoa.
+        if (picketRandom.nextFloat() < 0.2f) {
+            val vx = x + 4.5f * d
+            val y0 = if (up) y - 2f * d else y + 2f * d
+            val y1 = if (up) y - len + 6f * d else y + len - 6f * d
+            strokePaint.color = 0xFF2E7D32.toInt()
+            strokePaint.strokeWidth = 1.6f * d
+            c.drawLine(vx, y0, vx - 2f * d, (y0 + y1) / 2f, strokePaint)
+            c.drawLine(vx - 2f * d, (y0 + y1) / 2f, vx, y1, strokePaint)
+            fillPaint.color = 0xFF43A047.toInt()
+            c.drawCircle(vx - 3f * d, (y0 + y1) / 2f, 2.2f * d, fillPaint)
+            if (picketRandom.nextBoolean()) {
+                fillPaint.color = 0xFFF48FB1.toInt()
+                c.drawCircle(vx, y1, 2.5f * d, fillPaint)
+            }
+        }
     }
     fun picketV(x: Float, y: Float, left: Boolean) {
-        val w2 = 5f * d
-        val len = 20f * d
-        val rect = if (left) RectF(x - len, y - w2, x, y + w2) else RectF(x, y - w2, x + len, y + w2)
-        fillPaint.color = picketShades[picketRandom.nextInt(picketShades.size)]
-        c.drawRoundRect(rect, 2f * d, 2f * d, fillPaint)
-        strokePaint.color = Color.argb(110, 230, 81, 0)
-        strokePaint.strokeWidth = 1f * d
-        if (left) c.drawLine(x - len + 3f * d, y, x - 3f * d, y, strokePaint)
-        else c.drawLine(x + 3f * d, y, x + len - 3f * d, y, strokePaint)
+        val len = 26f * d
+        val tip = 7f * d
+        val shade = picketShades[picketRandom.nextInt(picketShades.size)]
+        fillPaint.color = Color.argb(55, 0, 0, 0)
+        c.drawPath(picketShapeV(x, y, left, 2f * d, 3f * d), fillPaint)
+        fillPaint.color = shade
+        c.drawPath(picketShapeV(x, y, left, 0f, 0f), fillPaint)
+        strokePaint.color = Color.argb(90, 62, 39, 35)
+        strokePaint.strokeWidth = 1.2f * d
+        val gy = y + (if (picketRandom.nextBoolean()) 2f else -2f) * d
+        if (left) c.drawLine(x - 4f * d, gy, x - len + tip + 2f * d, gy, strokePaint)
+        else c.drawLine(x + 4f * d, gy, x + len - tip - 2f * d, gy, strokePaint)
+        if (picketRandom.nextFloat() < 0.33f) {
+            val kx = if (left) x - len * 0.55f else x + len * 0.55f
+            fillPaint.color = Color.argb(120, 62, 39, 35)
+            c.drawCircle(kx, y, 2.5f * d, fillPaint)
+            strokePaint.color = Color.argb(90, 62, 39, 35)
+            strokePaint.strokeWidth = 1f * d
+            c.drawCircle(kx, y, 4f * d, strokePaint)
+        }
+        fillPaint.color = 0xFF3E2723.toInt()
+        c.drawCircle(if (left) x - 7f * d else x + 7f * d, y, 1.6f * d, fillPaint)
+        if (picketRandom.nextFloat() < 0.2f) {
+            val vy = y + 4.5f * d
+            val x0 = if (left) x - 2f * d else x + 2f * d
+            val x1 = if (left) x - len + 6f * d else x + len - 6f * d
+            strokePaint.color = 0xFF2E7D32.toInt()
+            strokePaint.strokeWidth = 1.6f * d
+            c.drawLine(x0, vy, (x0 + x1) / 2f, vy - 2f * d, strokePaint)
+            c.drawLine((x0 + x1) / 2f, vy - 2f * d, x1, vy, strokePaint)
+            fillPaint.color = 0xFF43A047.toInt()
+            c.drawCircle((x0 + x1) / 2f, vy - 3f * d, 2.2f * d, fillPaint)
+            if (picketRandom.nextBoolean()) {
+                fillPaint.color = 0xFFF48FB1.toInt()
+                c.drawCircle(x1, vy, 2.5f * d, fillPaint)
+            }
+        }
     }
     var px = fx0 + 8f * d
     while (px < fx1) {
@@ -438,18 +585,24 @@ fun renderStaticScene(
         if (!nearGap(py, rightGaps)) picketV(fx1, py, false)
         py += 16f * d
     }
-    // Cột góc to hơn, có nắp vuông.
-    val cornerRect = RectF()
+    // Cột góc to + đèn lồng vàng phát sáng.
     for ((cx, cy) in listOf(fx0 to fy0, fx1 to fy0, fx0 to fy1, fx1 to fy1)) {
-        cornerRect.set(cx - 8f * d, cy - 8f * d, cx + 8f * d, cy + 8f * d)
-        fillPaint.color = 0xFFE65100.toInt()
-        c.drawRoundRect(cornerRect, 2f * d, 2f * d, fillPaint)
-        cornerRect.set(cx - 10f * d, cy - 10f * d, cx + 10f * d, cy + 10f * d)
-        fillPaint.color = 0xFFBF360C.toInt()
-        c.drawRoundRect(cornerRect, 3f * d, 3f * d, fillPaint)
-        strokePaint.color = Color.argb(90, 255, 255, 255)
-        strokePaint.strokeWidth = 2f * d
-        c.drawLine(cx - 6f * d, cy - 8f * d, cx + 6f * d, cy - 8f * d, strokePaint)
+        fillPaint.shader = RadialGradient(cx, cy - 6f * d, 24f * d, Color.argb(110, 255, 213, 79), Color.argb(0, 255, 213, 79), Shader.TileMode.CLAMP)
+        c.drawCircle(cx, cy - 6f * d, 24f * d, fillPaint)
+        fillPaint.shader = null
+        fillPaint.color = 0xFF4E342E.toInt()
+        c.drawRoundRect(RectF(cx - 8f * d, cy - 8f * d, cx + 8f * d, cy + 8f * d), 2f * d, 2f * d, fillPaint)
+        fillPaint.color = 0xFF6D4C41.toInt()
+        c.drawRoundRect(RectF(cx - 6f * d, cy - 6f * d, cx + 6f * d, cy + 6f * d), 2f * d, 2f * d, fillPaint)
+        strokePaint.color = 0xFF3E2723.toInt()
+        strokePaint.strokeWidth = 1.5f * d
+        c.drawLine(cx, cy - 8f * d, cx, cy - 14f * d, strokePaint)
+        fillPaint.color = 0xFFFFD54F.toInt()
+        c.drawRoundRect(RectF(cx - 5f * d, cy - 20f * d, cx + 5f * d, cy - 12f * d), 2f * d, 2f * d, fillPaint)
+        fillPaint.color = 0xFFEF6C00.toInt()
+        c.drawRect(RectF(cx - 5f * d, cy - 21f * d, cx + 5f * d, cy - 19f * d), fillPaint)
+        fillPaint.color = 0xFFFFF59D.toInt()
+        c.drawCircle(cx, cy - 16f * d, 2.5f * d, fillPaint)
     }
 
     return bmp.asImageBitmap()

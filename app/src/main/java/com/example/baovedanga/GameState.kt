@@ -222,7 +222,7 @@ class GameState(
 
     // Quái càng lên level càng trâu (tối đa gấp 5) và chạy nhanh hơn (tối đa gấp 3).
     private val hpFactor: Float = minOf(1f + 0.08f * (level.number - 1), 5f)
-    private val speedFactor: Float = minOf(1f + 0.06f * (level.number - 1), 3f)
+    private val speedFactor: Float = minOf(1f + 0.06f * (level.number - 1), 3.5f)
 
     fun monsterRadiusPx(m: Monster): Float {
         var r = 26f * density * m.type.radiusScale
@@ -421,7 +421,7 @@ class GameState(
         var scaledHp = (type.hp * hpFactor).roundToInt()
         var coins = type.coins + level.number / 2
         // Mỗi con tốc độ khác nhau (0,85-1,25 lần) và càng về đợt sau càng nhanh.
-        val waveSpeed = minOf(1f + 0.15f * waveIndex, 2.2f)
+        val waveSpeed = minOf(1f + 0.18f * waveIndex, 2.4f)
         var speedMul = (0.85f + random.nextFloat() * 0.4f) * waveSpeed
         if (isBoss) {
             // Boss: máu gấp 10, xu gấp 20, chạy chậm hơn (0,7 lần).

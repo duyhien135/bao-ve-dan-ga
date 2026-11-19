@@ -68,6 +68,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 // Vẽ ảnh vừa khít trong ô vuông size×size, giữ nguyên tỉ lệ.
@@ -328,6 +329,17 @@ fun GameScreen(
                     val img = monsterImages[m.type.id] ?: continue
                     val r = game.monsterRadiusPx(m)
                     val size = r * 2f
+                    // Hào quang đỏ đậm nhấp nháy dưới mọi con quái (ghê rợn).
+                    val pulse = 0.22f + 0.08f * sin(now / 280f)
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(Color(0xFFB71C1C).copy(alpha = pulse), Color.Transparent),
+                            center = Offset(m.x, m.y),
+                            radius = r + 12f * d,
+                        ),
+                        radius = r + 12f * d,
+                        center = Offset(m.x, m.y),
+                    )
                     // Hào quang boss / lửa cháy (vẽ dưới quái).
                     if (m.isBoss) {
                         drawCircle(Color(0xFFD32F2F).copy(alpha = 0.25f), radius = r + 8f * d, center = Offset(m.x, m.y))
@@ -340,6 +352,27 @@ fun GameScreen(
                         ColorFilter.tint(Color.White.copy(alpha = 0.6f), BlendMode.SrcAtop)
                     } else null
                     drawSprite(img, m.x, m.y, size, colorFilter = flash)
+                    // Tối viền quanh quái + mắt đỏ phát sáng (quái yếu thì
+                    // hiện 2 chữ X đỏ thay, quái đóng băng thì không vẽ mắt).
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.35f)),
+                            center = Offset(m.x, m.y),
+                            radius = r,
+                        ),
+                        radius = r,
+                        center = Offset(m.x, m.y),
+                    )
+                    if (m.hp > m.maxHp / 4 && now >= m.frozenUntilMs) {
+                        val ex = 0.17f * size
+                        val ey = -0.14f * size
+                        for (sx in listOf(m.x - ex, m.x + ex)) {
+                            val cy = m.y + ey
+                            drawCircle(Color(0xFFFF1744).copy(alpha = 0.5f), radius = 0.075f * size, center = Offset(sx, cy))
+                            drawCircle(Color(0xFFFF5252), radius = 0.038f * size, center = Offset(sx, cy))
+                            drawCircle(Color.White, radius = 0.015f * size, center = Offset(sx, cy))
+                        }
+                    }
                     // Đóng băng: phủ lớp băng trắng xanh.
                     if (now < m.frozenUntilMs) {
                         drawCircle(Color(0xFFB3E5FC).copy(alpha = 0.45f), radius = r, center = Offset(m.x, m.y))

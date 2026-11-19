@@ -57,19 +57,19 @@ data class MonsterType(
 )
 
 val MONSTER_TYPES = listOf(
-    MonsterType("fox", "Cáo", "\uD83E\uDD8A", 3, 130f, 5, 1.0f, 0xFFFF7043, 1, R.drawable.mon_fox, "dash"),
-    MonsterType("snake", "Rắn", "🐍", 8, 195f, 10, 0.9f, 0xFF66BB6A, 6, R.drawable.mon_snake, "split", 2),
-    MonsterType("wolf", "Sói", "\uD83D\uDC3A", 6, 160f, 8, 1.05f, 0xFF78909C, 10, R.drawable.mon_wolf),
-    MonsterType("spider", "Nhện", "🕷️", 10, 150f, 12, 0.95f, 0xFF5D4037, 15, R.drawable.mon_spider, "split", 3),
-    MonsterType("bear", "Gấu", "\uD83D\uDC3B", 12, 85f, 15, 1.25f, 0xFF8D6E63, 20, R.drawable.mon_bear, "shield"),
-    MonsterType("monkey", "Khỉ", "🐒", 14, 175f, 18, 1.0f, 0xFFA1887F, 26, R.drawable.mon_monkey, "thief"),
-    MonsterType("tiger", "Hổ", "\uD83D\uDC2F", 20, 140f, 25, 1.2f, 0xFFFFA000, 32, R.drawable.mon_tiger, "dash"),
-    MonsterType("leopard", "Báo", "🐆", 16, 220f, 20, 1.1f, 0xFFFBC02D, 38, R.drawable.mon_leopard, "dash"),
-    MonsterType("croc", "Cá sấu", "\uD83D\uDC0A", 30, 90f, 35, 1.3f, 0xFF558B2F, 45, R.drawable.mon_croc, "shield"),
-    MonsterType("lion", "Sư tử", "🦁", 40, 130f, 45, 1.35f, 0xFFEF6C00, 52, R.drawable.mon_lion),
-    MonsterType("rhino", "Tê giác", "🦏", 60, 70f, 60, 1.45f, 0xFF78909C, 60, R.drawable.mon_rhino, "shield"),
-    MonsterType("elephant", "Voi", "\uD83D\uDC18", 45, 60f, 50, 1.5f, 0xFF90A4AE, 68, R.drawable.mon_elephant),
-    MonsterType("dragon", "Rồng", "🐉", 90, 105f, 100, 1.6f, 0xFFC62828, 78, R.drawable.mon_dragon),
+    MonsterType("fox", "Cáo", "\uD83E\uDD8A", 3, 160f, 5, 1.0f, 0xFFFF7043, 1, R.drawable.mon_fox, "dash"),
+    MonsterType("snake", "Rắn", "🐍", 8, 240f, 10, 0.9f, 0xFF66BB6A, 6, R.drawable.mon_snake, "split", 2),
+    MonsterType("wolf", "Sói", "\uD83D\uDC3A", 6, 200f, 8, 1.05f, 0xFF78909C, 10, R.drawable.mon_wolf),
+    MonsterType("spider", "Nhện", "🕷️", 10, 190f, 12, 0.95f, 0xFF5D4037, 15, R.drawable.mon_spider, "split", 3),
+    MonsterType("bear", "Gấu", "\uD83D\uDC3B", 12, 105f, 15, 1.25f, 0xFF8D6E63, 20, R.drawable.mon_bear, "shield"),
+    MonsterType("monkey", "Khỉ", "🐒", 14, 220f, 18, 1.0f, 0xFFA1887F, 26, R.drawable.mon_monkey, "thief"),
+    MonsterType("tiger", "Hổ", "\uD83D\uDC2F", 20, 175f, 25, 1.2f, 0xFFFFA000, 32, R.drawable.mon_tiger, "dash"),
+    MonsterType("leopard", "Báo", "🐆", 16, 275f, 20, 1.1f, 0xFFFBC02D, 38, R.drawable.mon_leopard, "dash"),
+    MonsterType("croc", "Cá sấu", "\uD83D\uDC0A", 30, 110f, 35, 1.3f, 0xFF558B2F, 45, R.drawable.mon_croc, "shield"),
+    MonsterType("lion", "Sư tử", "🦁", 40, 160f, 45, 1.35f, 0xFFEF6C00, 52, R.drawable.mon_lion),
+    MonsterType("rhino", "Tê giác", "🦏", 60, 85f, 60, 1.45f, 0xFF78909C, 60, R.drawable.mon_rhino, "shield"),
+    MonsterType("elephant", "Voi", "\uD83D\uDC18", 45, 75f, 50, 1.5f, 0xFF90A4AE, 68, R.drawable.mon_elephant),
+    MonsterType("dragon", "Rồng", "🐉", 90, 130f, 100, 1.6f, 0xFFC62828, 78, R.drawable.mon_dragon),
 )
 
 fun monsterTypeById(id: String): MonsterType = MONSTER_TYPES.firstOrNull { it.id == id } ?: MONSTER_TYPES[0]
@@ -104,15 +104,15 @@ fun levelDef(number: Int): LevelDef {
     val unlocked = MONSTER_TYPES.filter { it.minLevel <= number }
     val pathCount = pathCountForLevel(number)
     val waveCount = 3
-    val gap = maxOf(0.7f, 1.4f - 0.02f * number)
+    val gap = maxOf(0.55f, 1.2f - 0.02f * number)
     // Quái quen (mở được từ 5 level trước) làm chủ lực; quái mới nhất chỉ lác đác vài con.
     val common = unlocked.filter { it.minLevel <= number - 5 }.ifEmpty { unlocked }
     val newest = unlocked.filter { it.minLevel > number - 5 }
     var newestLeft = if (newest.isNotEmpty()) 3 else 0
-    val perWaveBase = 25 + number * 2 // quái mỗi đợt, tăng theo level (giới hạn dưới)
+    val perWaveBase = 40 + number * 3 // quái mỗi đợt, tăng theo level (giới hạn dưới)
     val waves = List(waveCount) { _ ->
         val groups = mutableListOf<SpawnGroup>()
-        var remaining = minOf(perWaveBase + rng.nextInt(10), 70)
+        var remaining = minOf(perWaveBase + rng.nextInt(12), 100)
         while (remaining > 0) {
             // Thỉnh thoảng nhét 1-2 con quái mới nhất vào giữa đợt.
             if (newestLeft > 0 && rng.nextFloat() < 0.25f) {
