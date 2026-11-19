@@ -119,10 +119,12 @@ fun GameScreen(
     val game = remember(level.number, restartKey) { GameState(level, weapon, density) }
     var rewardsApplied by remember(level.number, restartKey) { mutableStateOf(false) }
 
-    // Ảnh quái, gà, vũ khí: nạp 1 lần bằng BitmapFactory rồi đổi sang ImageBitmap.
+    // Ảnh quái, gà, vũ khí, nền cỏ: nạp 1 lần bằng BitmapFactory rồi đổi sang ImageBitmap.
     val context = LocalContext.current
     val monsterImages = remember { MONSTER_TYPES.associate { it.id to BitmapFactory.decodeResource(context.resources, it.imageRes).asImageBitmap() } }
-    val chickenImage = remember { BitmapFactory.decodeResource(context.resources, R.drawable.chicken).asImageBitmap() }
+    val nestImage = remember { BitmapFactory.decodeResource(context.resources, R.drawable.nest_empty).asImageBitmap() }
+    val chickImage = remember { BitmapFactory.decodeResource(context.resources, R.drawable.chick).asImageBitmap() }
+    val grassImage = remember { BitmapFactory.decodeResource(context.resources, R.drawable.bg_grass).asImageBitmap() }
     val weaponImages = remember { WEAPONS.associate { it.id to BitmapFactory.decodeResource(context.resources, it.imageRes).asImageBitmap() } }
 
     // Nhận xu + mở level mới khi thắng/thua (chỉ 1 lần mỗi ván).
@@ -249,8 +251,20 @@ fun GameScreen(
                 val fy0 = FENCE_TOP * h
                 val fy1 = FENCE_BOTTOM * h
 
-                // --- Rừng: nền xanh đậm + cây (tránh hàng rào và đường) ---
-                drawRect(Color(0xFF2E7D32))
+                // --- Nền cỏ chi tiết (ảnh thật, phủ kín màn hình) ---
+                val gw = grassImage.width.toFloat()
+                val gh = grassImage.height.toFloat()
+                val gScale = maxOf(w / gw, h / gh)
+                val gDw = (gw * gScale).roundToInt()
+                val gDh = (gh * gScale).roundToInt()
+                drawImage(
+                    grassImage,
+                    srcOffset = IntOffset.Zero,
+                    srcSize = IntSize(grassImage.width, grassImage.height),
+                    dstOffset = IntOffset(((w - gDw) / 2f).roundToInt(), ((h - gDh) / 2f).roundToInt()),
+                    dstSize = IntSize(gDw, gDh),
+                )
+                // --- Rừng: cây (tránh hàng rào và đường) ---
                 val treeRandom = Random(42)
                 repeat(40) {
                     val tx = treeRandom.nextFloat() * w
@@ -275,13 +289,8 @@ fun GameScreen(
                     drawCircle(Color(0xFF388E3C), radius = tr * 0.6f, center = Offset(tx - tr * 0.2f, ty - tr * 0.2f))
                 }
 
-                // --- Vườn rau trong hàng rào ---
-                drawRoundRect(
-                    color = Color(0xFFA5D6A7),
-                    topLeft = Offset(fx0, fy0),
-                    size = Size(fx1 - fx0, fy1 - fy0),
-                    cornerRadius = CornerRadius(24f * d, 24f * d),
-                )
+                // --- Vườn rau trong hàng rào: rau mọc trên cỏ, mỗi cây có ụ đất nhỏ ---
+                // (Không tô nền xanh nhạt nữa để cỏ chi tiết hiện ra.)
                 // Luống rau đẹp: cà rốt, bắp cải, cà chua xen kẽ.
                 val vegRandom = Random(7)
                 var ry = fy0 + 26f * d
@@ -291,6 +300,8 @@ fun GameScreen(
                         val dx = rx - NEST_X * w
                         val dy = ry - NEST_Y * h
                         if (dx * dx + dy * dy > (85f * d) * (85f * d)) {
+                            // Ụ đất nhỏ dưới gốc rau.
+                            drawOval(Color(0xFF8D6E63), topLeft = Offset(rx - 11f * d, ry + 2f * d), size = Size(22f * d, 10f * d))
                             when (vegRandom.nextInt(3)) {
                                 0 -> { // Cà rốt: củ cam + lá xanh.
                                     val p = Path().apply {
@@ -330,8 +341,28 @@ fun GameScreen(
                         moveTo(path.pts[0].first, path.pts[0].second)
                         for (j in 1 until path.pts.size) lineTo(path.pts[j].first, path.pts[j].second)
                     }
-                    drawPath(p, Color(0xFF8D6E63), style = Stroke(width = 46f * d, cap = StrokeCap.Round, join = StrokeJoin.Round))
-                    drawPath(p, Color(0xFFD7CCC8), style = Stroke(width = 34f * d, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    // Viền đậm -> nền đất cát -> vệt sáng ở giữa.
+                    drawPath(p, Color(0xFF5D4037), style = Stroke(width = 52f * d, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    drawPath(p, Color(0xFFC89B6A), style = Stroke(width = 46f * d, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    drawPath(p, Color(0xFFDEB887), style = Stroke(width = 26f * d, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    // Vệt bánh xe: 2 đường tối song song dọc theo đường.
+                    for (j in 1 until path.pts.size) {
+                        val (ax, ay) = path.pts[j - 1]
+                        val (bx, by) = path.pts[j]
+                        val segLen = kotlin.math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
+                        if (segLen < 1f) continue
+                        val px = -(by - ay) / segLen
+                        val py = (bx - ax) / segLen
+                        for (side in listOf(-1f, 1f)) {
+                            val off = side * 11f * d
+                            drawLine(
+                                Color(0xFF8D6E63),
+                                Offset(ax + px * off, ay + py * off),
+                                Offset(bx + px * off, by + py * off),
+                                4f * d, StrokeCap.Round,
+                            )
+                        }
+                    }
                     // Sỏi đá lấm tấm trên đường.
                     val pebbleRandom = Random(100 + i)
                     for (j in 1 until path.pts.size) {
@@ -345,6 +376,28 @@ fun GameScreen(
                             val py = ay + (by - ay) * t + (pebbleRandom.nextFloat() - 0.5f) * 20f * d
                             drawCircle(Color(0xFFBCAAA4), radius = (1.5f + pebbleRandom.nextFloat() * 2f) * d, center = Offset(px, py))
                             dist += 26f * d + pebbleRandom.nextFloat() * 20f * d
+                        }
+                    }
+                    // Cỏ mọc lún phún 2 mép đường.
+                    val tuftRandom = Random(500 + i)
+                    for (j in 1 until path.pts.size) {
+                        val (ax, ay) = path.pts[j - 1]
+                        val (bx, by) = path.pts[j]
+                        val segLen = kotlin.math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
+                        if (segLen < 1f) continue
+                        val px = -(by - ay) / segLen
+                        val py = (bx - ax) / segLen
+                        var dist = 30f * d
+                        while (dist < segLen) {
+                            val t = dist / segLen
+                            val side = if (tuftRandom.nextBoolean()) 1f else -1f
+                            val off = side * (24f + tuftRandom.nextFloat() * 4f) * d
+                            val tx = ax + (bx - ax) * t + px * off
+                            val ty = ay + (by - ay) * t + py * off
+                            drawLine(Color(0xFF2E7D32), Offset(tx, ty), Offset(tx - 4f * d, ty - 7f * d), 2f * d, StrokeCap.Round)
+                            drawLine(Color(0xFF2E7D32), Offset(tx, ty), Offset(tx, ty - 8f * d), 2f * d, StrokeCap.Round)
+                            drawLine(Color(0xFF2E7D32), Offset(tx, ty), Offset(tx + 4f * d, ty - 7f * d), 2f * d, StrokeCap.Round)
+                            dist += 44f * d + tuftRandom.nextFloat() * 30f * d
                         }
                     }
                 }
@@ -470,14 +523,23 @@ fun GameScreen(
                     py += 16f * d
                 }
 
-                // --- Tổ gà: ảnh gà + gà còn sống xếp hàng dưới tổ ---
+                // --- Tổ gà: tổ rơm + 5 gà con ngồi trong tổ, mất con nào thì vắng con đó ---
                 val nx = NEST_X * w
                 val ny = NEST_Y * h
-                drawSprite(chickenImage, nx, ny, 118f * d)
-                for (i in 0 until game.chickens) {
-                    val totalW = (game.chickens - 1) * 30f * d
-                    val cx = nx - totalW / 2f + i * 30f * d
-                    drawSprite(chickenImage, cx, ny + 74f * d, 26f * d)
+                drawSprite(nestImage, nx, ny, 132f * d)
+                // Vị trí 5 gà con trong tổ (con giữa sống sót cuối cùng).
+                val chickSpots = listOf(
+                    0f to 0.06f,
+                    0f to -0.52f,
+                    -0.52f to -0.08f,
+                    0.52f to -0.16f,
+                    0f to 0.48f,
+                )
+                val nestR = 66f * d
+                val aliveSpots = chickSpots.take(game.chickens)
+                for (k in aliveSpots.indices.reversed()) {
+                    val (ox, oy) = aliveSpots[k]
+                    drawSprite(chickImage, nx + ox * nestR, ny + oy * nestR, 38f * d)
                 }
 
                 // --- Quái đã chết: mờ dần rồi biến mất ---

@@ -87,13 +87,13 @@ fun pathCountForLevel(number: Int): Int = when {
 }
 
 // Level vô hạn, sinh tự động theo số level (Random gieo theo số level nên cùng
-// 1 level luôn ra cùng 1 đội hình). Mỗi màn dài ~10 phút, rất nhiều quái.
+// 1 level luôn ra cùng 1 đội hình). Mỗi màn 5-8 đợt (lv1 chỉ 5 đợt cho gọn).
 // Quái mới mở rất chậm; loại mới nhất mỗi màn chỉ xuất hiện 1-3 con.
 fun levelDef(number: Int): LevelDef {
     val rng = Random(number * 7919L)
     val unlocked = MONSTER_TYPES.filter { it.minLevel <= number }
     val pathCount = pathCountForLevel(number)
-    val waveCount = minOf(8 + number / 4, 12)
+    val waveCount = minOf(5 + (number - 1) / 4, 8)
     val gap = maxOf(0.7f, 1.4f - 0.02f * number)
     // Quái quen (mở được từ 5 level trước) làm chủ lực; quái mới nhất chỉ lác đác vài con.
     val common = unlocked.filter { it.minLevel <= number - 5 }.ifEmpty { unlocked }

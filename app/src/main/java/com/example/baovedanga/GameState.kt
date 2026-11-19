@@ -18,6 +18,7 @@ class Monster(
     var hp: Int,
     val maxHp: Int, // máu tối đa (đã nhân hệ số theo level) để vẽ thanh máu
     val coins: Int, // xu nhận khi giết (đã cộng thưởng theo level)
+    val speedMul: Float = 1f, // hệ số tốc độ riêng của từng con (nhanh/chậm khác nhau)
     var distance: Float = 0f, // quãng đường đã đi dọc đường (px)
     var x: Float = 0f,
     var y: Float = 0f,
@@ -207,7 +208,7 @@ class GameState(
         val arrived = mutableListOf<Monster>()
         for (m in monsters) {
             val path = paths.getOrNull(m.pathIndex) ?: continue
-            m.distance += m.type.speedDp * density * speedFactor * dt
+            m.distance += m.type.speedDp * density * speedFactor * m.speedMul * dt
             val (x, y) = path.pointAt(m.distance)
             m.x = x
             m.y = y
@@ -259,6 +260,9 @@ class GameState(
         val path = paths.getOrNull(pathIndex) ?: return
         val (x, y) = path.pointAt(0f)
         val scaledHp = (type.hp * hpFactor).roundToInt()
+        // Mỗi con tốc độ khác nhau (0,85-1,25 lần) và càng về đợt sau càng nhanh.
+        val waveSpeed = minOf(1f + 0.06f * waveIndex, 1.5f)
+        val speedMul = (0.85f + random.nextFloat() * 0.4f) * waveSpeed
         monsters.add(
             Monster(
                 id = nextMonsterId++,
@@ -267,6 +271,7 @@ class GameState(
                 hp = scaledHp,
                 maxHp = scaledHp,
                 coins = type.coins + level.number / 2,
+                speedMul = speedMul,
                 x = x,
                 y = y,
             )
