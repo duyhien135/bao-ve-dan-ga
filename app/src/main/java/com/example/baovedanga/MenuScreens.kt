@@ -221,14 +221,20 @@ fun MenuScreen(
             title = { Text("Cách chơi") },
             text = {
                 Text(
-                    "• Quái đi từ rừng 2 bên theo đường đá vào tổ gà ở giữa. Mỗi trận đường đi khác nhau!\n" +
+                    "• Quái đi từ rừng theo đường ngoằn ngoèo tới cổng rào. Quái tới cổng thì dừng lại CẮN RÀO — rào vỡ thì quái tràn vào ăn gà. Chạm vào nút 🔧 phía trên cổng để sửa rào (tốn xu trong ván).\n" +
                         "• Chạm liên tục lên quái để đập chết bằng vũ khí. Chạm nhiều ngón cùng lúc được!\n" +
-                        "• Chạm trúng liên tiếp để lên combo — combo càng cao càng dễ chí mạng (sát thương gấp đôi). Chạm trượt là mất combo.\n" +
+                        "• Combo: chạm trúng liên tiếp để lên combo — combo càng cao càng dễ chí mạng và xu càng nhiều (x2 từ combo 15, x3 từ 30). Chạm trượt là mất combo.\n" +
+                        "• Điểm yếu: mỗi con quái có 1 chấm vàng nhấp nháy, chạm đúng thì chắc chắn chí mạng + thưởng xu.\n" +
+                        "• Quái chết thì rơi xu ra đất — chạm để nhặt trong 4 giây, không nhặt thì mất! Vừa đánh quái vừa nhặt xu.\n" +
+                        "• Cáo giả chết: cáo thỉnh thoảng nằm im giả chết, chạm vào là mất combo. Đợi nó chạy tiếp mới đánh được.\n" +
+                        "• Mỗi đợt có 1 con cáo to (đợt cuối là mini boss), máu nhiều, chạy chậm, nhiều xu.\n" +
+                        "• Nút 🐔 Kêu!: 1 lần mỗi màn, gà kêu làm tất cả quái đứng yên 3 giây. Dùng đúng lúc!\n" +
+                        "• Bẫy: bấm nút 🪤 Bẫy rồi đặt bẫy gai / bã độc / hố sập vào các góc cua trên đường (tốn xu trong ván).\n" +
                         "• Vũ khí xịn có hiệu ứng riêng: bom nổ lan, súng nước làm chậm, Thor giật điện lan, cung xuyên nhiều con, kiếm lửa đốt cháy, gậy phép đóng băng.\n" +
-                        "• Quái có hành vi riêng: cáo/báo lao nhanh đột ngột, rắn/nhện chết tách thành con nhỏ, gấu/cá sấu/tê giác có khiên (chỉ đánh được lúc khiên đóng), khỉ cướp gà chạy ngược (giết nó trên đường về để cứu gà).\n" +
-                        "• Mỗi 10 level có 1 boss khổng lồ ở cuối đợt 3.\n" +
-                        "• Giữa các đợt được chọn 1 trong 3 buff ngẫu nhiên (tăng sát thương, thêm gà, chí mạng, làm chậm quái...).\n" +
-                        "• Quái tới tổ sẽ ăn 1 con gà. Hết 5 con gà là thua, nhưng vẫn giữ xu đã giết quái.\n" +
+                        "• Quái có hành vi riêng: cáo/báo lao nhanh đột ngột, rắn chui xuống đất rồi trồi lên gần tổ (lúc chui không đánh được), khỉ leo qua rào, nhện chết tách thành con nhỏ, gấu/cá sấu/tê giác có khiên (chỉ đánh được lúc khiên đóng).\n" +
+                        "• Mỗi 10 level có 1 boss khổng lồ ở cuối đợt 3, biết triệu hồi quái con và cắn rào mạnh gấp 3.\n" +
+                        "• Giữa các đợt được chọn 1 trong 3 buff ngẫu nhiên (tăng sát thương, thêm gà, chí mạng, làm chậm quái, gà đẻ trứng vàng, rào thép...).\n" +
+                        "• Quái tới tổ sẽ ăn 1 con gà. Hết gà là thua, nhưng vẫn giữ xu đã nhặt.\n" +
                         "• Thắng màn thì sang cửa hàng mua vũ khí, bấm Tiếp theo để chơi màn kế.\n" +
                         "• Chỉ được chơi màn đang chơi, không chơi lại màn đã qua để cày xu.\n" +
                         "• Thoát app ra vào lại vẫn giữ nguyên tiến trình."

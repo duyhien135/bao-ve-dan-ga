@@ -40,7 +40,8 @@ fun weaponById(id: String): Weapon = WEAPONS.firstOrNull { it.id == id } ?: WEAP
 // imageRes: ảnh quái trong drawable-nodpi.
 // behavior: hành vi riêng — normal, dash (lao nhanh đột ngột), shield
 // (khiên chặn sát thương theo chu kỳ 2s mở/2s đóng), split (chết tách ra
-// splitCount con nhỏ), thief (cướp gà rồi chạy ngược về rừng).
+// splitCount con nhỏ), burrow (chui xuống đất, không đánh được, đi xuyên
+// rào rồi trồi lên gần tổ), climb (leo qua rào thay vì cắn rào).
 data class MonsterType(
     val id: String,
     val name: String,
@@ -58,11 +59,11 @@ data class MonsterType(
 
 val MONSTER_TYPES = listOf(
     MonsterType("fox", "Cáo", "\uD83E\uDD8A", 3, 160f, 5, 1.0f, 0xFFFF7043, 1, R.drawable.mon_fox, "dash"),
-    MonsterType("snake", "Rắn", "🐍", 8, 240f, 10, 0.9f, 0xFF66BB6A, 6, R.drawable.mon_snake, "split", 2),
+    MonsterType("snake", "Rắn", "🐍", 8, 240f, 10, 0.9f, 0xFF66BB6A, 6, R.drawable.mon_snake, "burrow"),
     MonsterType("wolf", "Sói", "\uD83D\uDC3A", 6, 200f, 8, 1.05f, 0xFF78909C, 10, R.drawable.mon_wolf),
     MonsterType("spider", "Nhện", "🕷️", 10, 190f, 12, 0.95f, 0xFF5D4037, 15, R.drawable.mon_spider, "split", 3),
     MonsterType("bear", "Gấu", "\uD83D\uDC3B", 12, 105f, 15, 1.25f, 0xFF8D6E63, 20, R.drawable.mon_bear, "shield"),
-    MonsterType("monkey", "Khỉ", "🐒", 14, 220f, 18, 1.0f, 0xFFA1887F, 26, R.drawable.mon_monkey, "thief"),
+    MonsterType("monkey", "Khỉ", "🐒", 14, 220f, 18, 1.0f, 0xFFA1887F, 26, R.drawable.mon_monkey, "climb"),
     MonsterType("tiger", "Hổ", "\uD83D\uDC2F", 20, 175f, 25, 1.2f, 0xFFFFA000, 32, R.drawable.mon_tiger, "dash"),
     MonsterType("leopard", "Báo", "🐆", 16, 275f, 20, 1.1f, 0xFFFBC02D, 38, R.drawable.mon_leopard, "dash"),
     MonsterType("croc", "Cá sấu", "\uD83D\uDC0A", 30, 110f, 35, 1.3f, 0xFF558B2F, 45, R.drawable.mon_croc, "shield"),
@@ -78,7 +79,9 @@ fun monsterTypeById(id: String): MonsterType = MONSTER_TYPES.firstOrNull { it.id
 // Một đợt (wave) gồm nhiều nhóm quái sinh ra nối tiếp nhau.
 // gap: khoảng cách giữa 2 con trong nhóm (giây).
 // isBoss: nhóm này là boss (chỉ 1 con, khổng lồ, máu gấp 10).
-data class SpawnGroup(val type: String, val count: Int, val gap: Float = 1.1f, val isBoss: Boolean = false)
+// isBig: cáo to giữa đợt (máu gấp 5, chạy chậm, xu gấp 5).
+// isMiniBoss: cáo to ở đợt cuối (máu gấp 8, xu gấp 10).
+data class SpawnGroup(val type: String, val count: Int, val gap: Float = 1.1f, val isBoss: Boolean = false, val isBig: Boolean = false, val isMiniBoss: Boolean = false)
 data class LevelDef(
     val number: Int,
     val pathCount: Int, // số đường quái đi vào (1..4)
@@ -110,7 +113,7 @@ fun levelDef(number: Int): LevelDef {
     val newest = unlocked.filter { it.minLevel > number - 5 }
     var newestLeft = if (newest.isNotEmpty()) 3 else 0
     val perWaveBase = 40 + number * 3 // quái mỗi đợt, tăng theo level (giới hạn dưới)
-    val waves = List(waveCount) { _ ->
+    val waves = List(waveCount) { wi ->
         val groups = mutableListOf<SpawnGroup>()
         var remaining = minOf(perWaveBase + rng.nextInt(12), 100)
         while (remaining > 0) {
@@ -127,6 +130,10 @@ fun levelDef(number: Int): LevelDef {
                 remaining -= count
             }
         }
+        // Cáo to giữa đợt: đợt thường thì cáo to, đợt cuối thì mini boss.
+        val big = if (wi == waveCount - 1) SpawnGroup("fox", 1, gap, isMiniBoss = true)
+        else SpawnGroup("fox", 1, gap, isBig = true)
+        groups.add(groups.size / 2, big)
         groups
     }
     // Boss mỗi 10 level: con cuối cùng của đợt 3, là loại quái mới nhất.
@@ -155,9 +162,39 @@ val BUFF_POOL = listOf(
     Buff("shield", "Khiên tổ", "Mỗi đợt chặn 1 lần quái tới tổ", "\uD83D\uDEE1"),
     Buff("splash", "Đánh lan", "Cú đánh lan sang 1 con gần nhất (50% sát thương)", "\uD83D\uDCA5"),
     Buff("heal", "Hồi gà", "Hồi 1 gà mỗi khi sang đợt mới", "❤️"),
+    Buff("layxu", "Gà đẻ trứng vàng", "Mỗi gà cho +5 xu mỗi đợt", "🥚"),
+    Buff("fence", "Rào thép", "Rào +50% máu tối đa và hồi đầy ngay", "🛡️"),
 )
 
 fun randomBuffs(rng: Random, count: Int = 3): List<Buff> = BUFF_POOL.shuffled(rng).take(count)
+
+// ==================== BẪY ĐẶT TRÊN ĐƯỜNG ====================
+// Người chơi dùng xu trong ván mua bẫy, đặt vào các góc cua trên đường.
+// Bẫy ở lại hết ván. Gai gây sát thương liên tục, hố giữ chân quái,
+// bã độc làm quái mất máu dần + chậm lại.
+data class TrapType(val id: String, val name: String, val emoji: String, val price: Int, val desc: String)
+
+val TRAP_TYPES = listOf(
+    TrapType("spikes", "Bẫy gai", "📌", 80, "Gây 1 sát thương mỗi 0,6s cho quái đứng trên bẫy"),
+    TrapType("poison", "Bã độc", "☠️", 120, "Quái đi qua bị độc: mất 1 máu/giây trong 3s, chậm 25%"),
+    TrapType("pit", "Hố sập", "🕳️", 180, "Quái sập hố, đứng yên 3s (hố hồi lại sau 6s)"),
+)
+
+fun trapTypeById(id: String): TrapType = TRAP_TYPES.firstOrNull { it.id == id } ?: TRAP_TYPES[0]
+
+// ==================== CỔNG RÀO ====================
+// Mỗi đường có 1 cổng rào ở chỗ đường cắt qua hàng rào. Quái tới cổng thì
+// dừng lại cắn rào; rào vỡ thì quái tràn vào tổ. Sửa rào tốn xu trong ván.
+fun gateMaxHp(level: Int): Int = 25 + 5 * level
+fun repairCost(level: Int): Int = 40 + 10 * level
+
+// Vị trí cổng (tọa độ chuẩn hóa) theo từng đường: trái, phải, trên, dưới.
+fun gatePointForPath(pathIndex: Int): Pair<Float, Float> = when (pathIndex) {
+    1 -> FENCE_RIGHT to 0.50f
+    2 -> 0.50f to FENCE_TOP
+    3 -> 0.50f to FENCE_BOTTOM
+    else -> FENCE_LEFT to 0.50f
+}
 
 // Xu thưởng khi thắng level.
 fun winBonus(level: Int): Int = 25 + 20 * level
@@ -178,42 +215,52 @@ private fun randYOffCenter(rng: Random): Float {
 
 fun randomPathSet(rng: Random, pathCount: Int): List<List<Pair<Float, Float>>> {
     val paths = mutableListOf<List<Pair<Float, Float>>>()
+    // Đường dài ngoằn ngoèo: nhiều đoạn gấp khúc ngoài rào rồi mới có 1 đoạn
+    // thẳng cuối đi qua cổng rào vào tổ. Mỗi đường chỉ cắt rào đúng 1 lần.
     // Đường 0: vào từ trái, tới tổ theo hướng ngang từ trái.
     if (pathCount >= 1) {
         val y0 = randY(rng, 0.12f, 0.88f)
-        val x1 = randY(rng, 0.08f, 0.25f)
+        val x1 = randY(rng, 0.08f, 0.15f)
         val y1 = randYOffCenter(rng)
-        val x2 = randY(rng, maxOf(x1 + 0.08f, 0.27f), 0.40f)
+        val x2 = randY(rng, 0.18f, 0.25f)
+        val y2 = randYOffCenter(rng)
+        val x3 = randY(rng, 0.27f, 0.31f)
         paths += listOf(
-            -0.05f to y0, x1 to y0, x1 to y1, x2 to y1, x2 to 0.50f, 0.50f to 0.50f,
+            -0.05f to y0, x1 to y0, x1 to y1, x2 to y1, x2 to y2, x3 to y2, x3 to 0.50f, 0.50f to 0.50f,
         )
     }
     // Đường 1: vào từ phải, tới tổ theo hướng ngang từ phải.
     if (pathCount >= 2) {
         val y0 = randY(rng, 0.12f, 0.88f)
-        val x1 = randY(rng, 0.75f, 0.92f)
+        val x1 = randY(rng, 0.85f, 0.92f)
         val y1 = randYOffCenter(rng)
-        val x2 = randY(rng, 0.60f, minOf(x1 - 0.08f, 0.73f))
+        val x2 = randY(rng, 0.75f, 0.82f)
+        val y2 = randYOffCenter(rng)
+        val x3 = randY(rng, 0.69f, 0.73f)
         paths += listOf(
-            1.05f to y0, x1 to y0, x1 to y1, x2 to y1, x2 to 0.50f, 0.50f to 0.50f,
+            1.05f to y0, x1 to y0, x1 to y1, x2 to y1, x2 to y2, x3 to y2, x3 to 0.50f, 0.50f to 0.50f,
         )
     }
     // Đường 2: vào từ trái, tới tổ theo hướng dọc từ trên.
     if (pathCount >= 3) {
         val y0 = randY(rng, 0.15f, 0.85f)
-        val x1 = randY(rng, 0.08f, 0.30f)
-        val y1 = randY(rng, 0.10f, 0.32f)
+        val x1 = randY(rng, 0.08f, 0.15f)
+        val y1 = randY(rng, 0.10f, 0.30f)
+        val x2 = randY(rng, 0.20f, 0.30f)
+        val y2 = randY(rng, 0.08f, 0.13f)
         paths += listOf(
-            -0.05f to y0, x1 to y0, x1 to y1, 0.50f to y1, 0.50f to 0.50f,
+            -0.05f to y0, x1 to y0, x1 to y1, x2 to y1, x2 to y2, 0.50f to y2, 0.50f to 0.50f,
         )
     }
     // Đường 3: vào từ phải, tới tổ theo hướng dọc từ dưới.
     if (pathCount >= 4) {
         val y0 = randY(rng, 0.15f, 0.85f)
-        val x1 = randY(rng, 0.70f, 0.92f)
-        val y1 = randY(rng, 0.68f, 0.90f)
+        val x1 = randY(rng, 0.85f, 0.92f)
+        val y1 = randY(rng, 0.70f, 0.90f)
+        val x2 = randY(rng, 0.70f, 0.80f)
+        val y2 = randY(rng, 0.87f, 0.92f)
         paths += listOf(
-            1.05f to y0, x1 to y0, x1 to y1, 0.50f to y1, 0.50f to 0.50f,
+            1.05f to y0, x1 to y0, x1 to y1, x2 to y1, x2 to y2, 0.50f to y2, 0.50f to 0.50f,
         )
     }
     return paths
