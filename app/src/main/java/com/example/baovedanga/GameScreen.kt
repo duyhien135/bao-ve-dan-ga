@@ -1,5 +1,6 @@
 package com.example.baovedanga
 
+import android.graphics.BitmapFactory
 import android.graphics.Paint
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -49,6 +51,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -116,10 +119,11 @@ fun GameScreen(
     val game = remember(level.number, restartKey) { GameState(level, weapon, density) }
     var rewardsApplied by remember(level.number, restartKey) { mutableStateOf(false) }
 
-    // Ảnh quái, gà, vũ khí.
-    val monsterImages = MONSTER_TYPES.associate { it.id to ImageBitmap.imageResource(it.imageRes) }
-    val chickenImage = ImageBitmap.imageResource(R.drawable.chicken)
-    val weaponImages = WEAPONS.associate { it.id to ImageBitmap.imageResource(it.imageRes) }
+    // Ảnh quái, gà, vũ khí: nạp 1 lần bằng BitmapFactory rồi đổi sang ImageBitmap.
+    val context = LocalContext.current
+    val monsterImages = remember { MONSTER_TYPES.associate { it.id to BitmapFactory.decodeResource(context.resources, it.imageRes).asImageBitmap() } }
+    val chickenImage = remember { BitmapFactory.decodeResource(context.resources, R.drawable.chicken).asImageBitmap() }
+    val weaponImages = remember { WEAPONS.associate { it.id to BitmapFactory.decodeResource(context.resources, it.imageRes).asImageBitmap() } }
 
     // Nhận xu + mở level mới khi thắng/thua (chỉ 1 lần mỗi ván).
     // Thắng thì chuyển sang cửa hàng ngay.
