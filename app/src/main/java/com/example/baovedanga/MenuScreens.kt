@@ -1,10 +1,11 @@
 package com.example.baovedanga
 
+import android.app.Activity
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,16 +13,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,16 +33,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val GreenDark = Color(0xFF1B5E20)
-private val GreenMid = Color(0xFF2E7D32)
-private val Cream = Color(0xFFFFF8E1)
-
 // ==================== MENU CHÍNH ====================
+// 3 nút: Chơi (tiếp tục màn đang chơi), Cửa hàng, Thoát.
 @Composable
 fun MenuScreen(
     save: SaveManager,
@@ -49,55 +49,76 @@ fun MenuScreen(
     onShop: () -> Unit,
 ) {
     var showHelp by remember { mutableStateOf(false) }
+    var showExit by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val weapon = save.selectedWeapon
+    val level = save.unlockedLevel // màn đang chơi (chỉ chơi màn này, không chơi lại màn đã qua)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(GreenDark)
-            .padding(24.dp),
+            .background(Color(0xFF1B5E20))
+            .padding(horizontal = 24.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("\uD83D\uDC14", fontSize = 72.sp)
+        Text("🐔", fontSize = 56.sp)
         Text(
-            "Bảo vệ đàn gà",
+            "BẢO VỆ ĐÀN GÀ",
             color = Color.White,
-            fontSize = 34.sp,
+            fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
-            "Chạm liên tục để đập quái,\nđừng để chúng ăn hết gà!",
+            "Chạm liên tục lên quái để đập chết,\nđừng để chúng ăn hết gà!",
             color = Color(0xFFC8E6C9),
-            fontSize = 15.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        Text(
-            "\uD83E\uDE99 ${save.coins} xu",
-            color = Color(0xFFFFD54F),
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-        )
-        Text(
-            "Vũ khí: ${save.selectedWeapon.emoji} ${save.selectedWeapon.name} (sát thương ${save.selectedWeapon.damage})",
-            color = Color.White,
             fontSize = 14.sp,
-            modifier = Modifier.padding(top = 4.dp),
+            textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("🪙 ${save.coins} xu", color = Color(0xFFFFD54F), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.width(16.dp))
+            Text("Màn đang chơi: $level", color = Color.White, fontSize = 16.sp)
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Image(
+                painter = painterResource(weapon.imageRes),
+                contentDescription = weapon.name,
+                modifier = Modifier.size(28.dp),
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("Vũ khí: ${weapon.name} (sát thương ${weapon.damage})", color = Color.White, fontSize = 14.sp)
+        }
+        Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = onPlay,
-            modifier = Modifier.fillMaxWidth(0.8f).height(56.dp),
-        ) { Text("▶️  Chơi", fontSize = 20.sp) }
-        Spacer(modifier = Modifier.height(12.dp))
+            modifier = Modifier.fillMaxWidth(0.7f).height(52.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF8C42)),
+        ) {
+            Text("▶ Chơi — Level $level", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        }
+        Spacer(modifier = Modifier.height(10.dp))
         Button(
             onClick = onShop,
-            modifier = Modifier.fillMaxWidth(0.8f).height(56.dp),
-        ) { Text("🛒  Cửa hàng", fontSize = 20.sp) }
-        Spacer(modifier = Modifier.height(12.dp))
+            modifier = Modifier.fillMaxWidth(0.7f).height(48.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047)),
+        ) {
+            Text("🛒 Cửa hàng", fontSize = 18.sp)
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        OutlinedButton(
+            onClick = { showExit = true },
+            modifier = Modifier.fillMaxWidth(0.7f).height(48.dp),
+        ) {
+            Text("🚪 Thoát", fontSize = 18.sp, color = Color.White)
+        }
+        Spacer(modifier = Modifier.height(10.dp))
         TextButton(onClick = { showHelp = true }) {
-            Text("❓ Cách chơi", color = Color(0xFFC8E6C9), fontSize = 16.sp)
+            Text("❓ Cách chơi", color = Color(0xFFC8E6C9), fontSize = 14.sp)
         }
     }
 
@@ -107,178 +128,166 @@ fun MenuScreen(
             title = { Text("Cách chơi") },
             text = {
                 Text(
-                    "• Quái đi theo đường đất từ rừng vào tổ gà. Chạm liên tục lên quái để đập chết chúng.\n\n" +
-                        "• Quái tới tổ sẽ ăn 1 con gà. Hết gà là thua ván.\n\n" +
-                        "• Giết quái được xu. Thắng level được thêm xu thưởng và mở level tiếp theo.\n\n" +
-                        "• Vào Cửa hàng mua vũ khí mạnh hơn: đập càng đau, giết quái càng nhanh.\n\n" +
-                        "• Cáo yếu nhất (3 máu), càng lên level càng gặp quái mạnh: rắn, sói, nhện, gấu, khỉ, hổ, báo, cá sấu, sư tử, tê giác, voi, rồng.\n\n" +
-                        "• Level vô hạn: thắng là mở level tiếp, quái càng lên cao càng trâu và càng đông."
+                    "• Quái đi từ rừng 2 bên theo đường đất vào tổ gà ở giữa.\n" +
+                        "• Chạm liên tục lên quái để đập chết bằng vũ khí. Chạm nhiều ngón cùng lúc được!\n" +
+                        "• Máu quái hiện dạng số, ví dụ cáo 3/3. Quái còn ít máu thì mắt hiện X đỏ.\n" +
+                        "• Quái tới tổ sẽ ăn 1 con gà. Hết 5 con gà là thua, nhưng vẫn giữ xu đã giết quái.\n" +
+                        "• Thắng màn thì sang cửa hàng mua vũ khí, bấm Tiếp theo để chơi màn kế.\n" +
+                        "• Mỗi màn dài khoảng 10 phút, càng lên cao quái càng nhiều, càng nhanh, càng trâu.\n" +
+                        "• Quái mới chỉ xuất hiện sau nhiều màn chơi. Chỉ được chơi màn đang chơi, không chơi lại màn đã qua để cày xu.\n" +
+                        "• Thoát app ra vào lại vẫn giữ nguyên tiến trình."
                 )
             },
-            confirmButton = {
-                Button(onClick = { showHelp = false }) { Text("Đã hiểu") }
-            },
+            confirmButton = { Button(onClick = { showHelp = false }) { Text("Đã hiểu") } },
         )
     }
-}
 
-// ==================== CHỌN LEVEL ====================
-@Composable
-fun LevelSelectScreen(
-    save: SaveManager,
-    onLevel: (LevelDef) -> Unit,
-    onBack: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(GreenDark)
-            .padding(16.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("← Quay lại", color = Color.White, fontSize = 16.sp) }
-            Spacer(modifier = Modifier.weight(1f))
-            Text("\uD83E\uDE99 ${save.coins}", color = Color(0xFFFFD54F), fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        }
-        Text(
-            "Chọn level",
-            color = Color.White,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(vertical = 12.dp),
+    if (showExit) {
+        AlertDialog(
+            onDismissRequest = { showExit = false },
+            title = { Text("Cút ok?") },
+            text = { Text("Thoát khỏi game nhé? Tiến trình đã được lưu rồi.") },
+            confirmButton = {
+                Button(onClick = { (context as? Activity)?.finish() }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExit = false }) { Text("Không") }
+            },
         )
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            // Level vô hạn: chỉ hiện các level đã mở + level tiếp theo (đang khóa).
-            items((1..save.unlockedLevel + 1).toList()) { n ->
-                val level = levelDef(n)
-                val unlocked = level.number <= save.unlockedLevel
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (unlocked) Cream else Color(0xFF424242)
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(enabled = unlocked) { onLevel(level) },
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(
-                            if (unlocked) "Level ${level.number}" else "🔒 Level ${level.number}",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (unlocked) Color(0xFF212121) else Color(0xFF9E9E9E),
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            "${level.waves.size} đợt · ${level.pathCount} đường",
-                            fontSize = 13.sp,
-                            color = if (unlocked) Color(0xFF616161) else Color(0xFF757575),
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            "🐔 × ${level.chickens}",
-                            fontSize = 13.sp,
-                            color = if (unlocked) Color(0xFF616161) else Color(0xFF757575),
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 
 // ==================== CỬA HÀNG ====================
+// Vũ khí bày theo lưới ngang 4 cột, nhìn một lần thấy hết, không cần kéo xuống.
+// Khi vừa thắng 1 màn (showNext = true): hiện nút "Tiếp theo ▶" ở góc phải
+// để sang màn kế, kèm dòng chúc mừng + xu kiếm được.
 @Composable
 fun ShopScreen(
     save: SaveManager,
     onBack: () -> Unit,
+    showNext: Boolean = false,
+    winInfo: String? = null,
+    onNext: (() -> Unit)? = null,
 ) {
     var message by remember { mutableStateOf<String?>(null) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(GreenDark)
-            .padding(16.dp),
+            .background(Color(0xFF1B5E20))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             TextButton(onClick = onBack) { Text("← Quay lại", color = Color.White, fontSize = 16.sp) }
             Spacer(modifier = Modifier.weight(1f))
-            Text("\uD83E\uDE99 ${save.coins} xu", color = Color(0xFFFFD54F), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            if (showNext) {
+                Button(
+                    onClick = { onNext?.invoke() },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF8C42)),
+                ) {
+                    Text("Tiếp theo ▶", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         }
         Text(
-            "Cửa hàng vũ khí",
+            "🛒 Cửa hàng vũ khí",
             color = Color.White,
-            fontSize = 28.sp,
+            fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(vertical = 12.dp),
+            modifier = Modifier.padding(start = 8.dp),
         )
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (winInfo != null) {
+            Text(
+                winInfo,
+                color = Color(0xFFFFD54F),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 8.dp, top = 2.dp),
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            "🪙 ${save.coins} xu",
+            color = Color(0xFFFFD54F),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(start = 8.dp),
+        )
+        if (message != null) {
+            Text(
+                message!!,
+                color = Color(0xFFFFCDD2),
+                fontSize = 14.sp,
+                modifier = Modifier.padding(start = 8.dp, top = 2.dp),
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(4),
+            contentPadding = PaddingValues(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.weight(1f),
+        ) {
             items(WEAPONS) { weapon ->
-                val owned = save.ownedWeapons.contains(weapon.id)
-                val selected = save.selectedWeaponId == weapon.id
+                val isOwned = save.ownedWeapons.contains(weapon.id)
+                val isSelected = save.selectedWeaponId == weapon.id
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = if (selected) Color(0xFFC8E6C9) else Cream
+                        containerColor = if (isSelected) Color(0xFFFF8C42) else Color(0xFF2E7D32)
                     ),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Text(weapon.emoji, fontSize = 36.sp)
-                        Spacer(modifier = Modifier.size(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(weapon.name, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                            Text("Sát thương: ${weapon.damage}", fontSize = 14.sp, color = Color(0xFF616161))
-                            if (!owned) {
-                                Text("Giá: ${weapon.price} xu", fontSize = 14.sp, color = Color(0xFFF57F17), fontWeight = FontWeight.Bold)
-                            }
-                        }
-                        if (!owned) {
-                            Button(
+                        Image(
+                            painter = painterResource(weapon.imageRes),
+                            contentDescription = weapon.name,
+                            modifier = Modifier.size(52.dp),
+                        )
+                        Text(
+                            weapon.name,
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                        )
+                        Text(
+                            "Sát thương: ${weapon.damage}",
+                            color = Color(0xFFC8E6C9),
+                            fontSize = 12.sp,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        when {
+                            isSelected -> Text("✔ Đang dùng", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            isOwned -> Button(
+                                onClick = {
+                                    save.selectWeapon(weapon)
+                                    message = null
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047)),
+                            ) { Text("Chọn", fontSize = 13.sp) }
+                            else -> Button(
                                 onClick = {
                                     if (save.buyWeapon(weapon)) {
                                         message = "Đã mua ${weapon.name}!"
                                     } else {
-                                        message = "Không đủ xu! Cần ${weapon.price} xu."
+                                        message = "Chưa đủ xu mua ${weapon.name} (cần ${weapon.price} xu)."
                                     }
                                 },
-                                enabled = save.coins >= weapon.price,
-                            ) { Text("Mua") }
-                        } else if (selected) {
-                            Text("✔ Đang dùng", fontSize = 14.sp, color = GreenMid, fontWeight = FontWeight.Bold)
-                        } else {
-                            Button(onClick = { save.selectWeapon(weapon) }) { Text("Chọn") }
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF8C42)),
+                            ) { Text("Mua ${weapon.price} xu", fontSize = 12.sp) }
                         }
                     }
                 }
             }
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            "Mẹo: giết quái và thắng level để tích xu mua vũ khí mạnh hơn.",
-            color = Color(0xFFC8E6C9),
-            fontSize = 13.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-
-    message?.let { msg ->
-        AlertDialog(
-            onDismissRequest = { message = null },
-            title = { Text("Cửa hàng") },
-            text = { Text(msg) },
-            confirmButton = {
-                Button(onClick = { message = null }) { Text("OK") }
-            },
-        )
     }
 }

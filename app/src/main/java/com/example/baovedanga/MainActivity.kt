@@ -13,7 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 
-private enum class Screen { MENU, LEVELS, SHOP, GAME }
+private enum class Screen { MENU, SHOP, GAME }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,32 +24,39 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     var screen by remember { mutableStateOf(Screen.MENU) }
                     var playingLevel by remember { mutableStateOf(levelDef(1)) }
-                    // Đổi mỗi lần sang level tiếp theo để GameScreen tạo ván mới.
+                    // Đổi mỗi lần vào màn mới để GameScreen tạo ván mới.
                     var gameKey by remember { mutableStateOf(0) }
+                    // Thắng màn thì sang cửa hàng, kèm nút "Tiếp theo" và thông tin xu.
+                    var shopFromWin by remember { mutableStateOf(false) }
+                    var winInfo by remember { mutableStateOf<String?>(null) }
 
                     when (screen) {
                         Screen.MENU -> MenuScreen(
                             save = save,
-                            onPlay = { screen = Screen.LEVELS },
-                            onShop = { screen = Screen.SHOP },
+                            // Chỉ chơi màn đang chơi (màn đã mở cao nhất); chơi mới thì là màn 1.
+                            onPlay = {
+                                playingLevel = levelDef(save.unlockedLevel)
+                                gameKey++
+                                screen = Screen.GAME
+                            },
+                            onShop = {
+                                shopFromWin = false
+                                winInfo = null
+                                screen = Screen.SHOP
+                            },
                         )
-                        Screen.LEVELS -> {
-                            BackHandler { screen = Screen.MENU }
-                            LevelSelectScreen(
-                                save = save,
-                                onLevel = {
-                                    playingLevel = it
-                                    gameKey++
-                                    screen = Screen.GAME
-                                },
-                                onBack = { screen = Screen.MENU },
-                            )
-                        }
                         Screen.SHOP -> {
                             BackHandler { screen = Screen.MENU }
                             ShopScreen(
                                 save = save,
                                 onBack = { screen = Screen.MENU },
+                                showNext = shopFromWin,
+                                winInfo = winInfo,
+                                onNext = {
+                                    playingLevel = levelDef(save.unlockedLevel)
+                                    gameKey++
+                                    screen = Screen.GAME
+                                },
                             )
                         }
                         Screen.GAME -> {
@@ -59,10 +66,10 @@ class MainActivity : ComponentActivity() {
                                     weapon = save.selectedWeapon,
                                     save = save,
                                     onExit = { screen = Screen.MENU },
-                                    onNextLevel = {
-                                        // Level vô hạn: luôn có level tiếp theo.
-                                        playingLevel = levelDef(playingLevel.number + 1)
-                                        gameKey++
+                                    onWin = { totalCoins ->
+                                        winInfo = "🎉 Thắng level ${playingLevel.number}! +$totalCoins xu"
+                                        shopFromWin = true
+                                        screen = Screen.SHOP
                                     },
                                 )
                             }

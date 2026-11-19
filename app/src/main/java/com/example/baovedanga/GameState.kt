@@ -24,7 +24,17 @@ class Monster(
     var flashUntilMs: Long = 0, // nhấp nháy trắng khi vừa bị đánh
 )
 
-// Hiệu ứng chữ nổi (sát thương, xu, mất gà).
+// Quái đã chết: giữ lại một lúc để vẽ mờ dần rồi biến mất.
+class DyingMonster(
+    val type: MonsterType,
+    val x: Float,
+    val y: Float,
+    val radius: Float,
+    val bornMs: Long,
+    val lifeMs: Long = 450,
+)
+
+// Hiệu ứng chữ nổi (xu khi giết quái, mất gà).
 class HitEffect(
     val x: Float,
     val y: Float,
@@ -33,6 +43,33 @@ class HitEffect(
     val bornMs: Long,
     val lifeMs: Long = 800,
     val big: Boolean = false,
+)
+
+// Hoạt ảnh vũ khí gõ xuống tại điểm chạm.
+class SwingEffect(
+    val x: Float,
+    val y: Float,
+    val weapon: Weapon,
+    val bornMs: Long,
+    val lifeMs: Long = 180,
+)
+
+// Đạn nước của súng nước: bay từ dưới lên tới quái.
+class Projectile(
+    val startX: Float,
+    val startY: Float,
+    val targetX: Float,
+    val targetY: Float,
+    val bornMs: Long,
+    val lifeMs: Long = 120,
+)
+
+// Vệt nước bắn tung khi đạn tới nơi.
+class SplashEffect(
+    val x: Float,
+    val y: Float,
+    val bornMs: Long,
+    val lifeMs: Long = 300,
 )
 
 // Một đoạn đường đã đổi sang tọa độ px, kèm độ dài tích lũy từng điểm
@@ -75,7 +112,11 @@ class GameState(
     private val density: Float,
 ) {
     val monsters = mutableStateListOf<Monster>()
+    val dying = mutableStateListOf<DyingMonster>()
     val effects = mutableStateListOf<HitEffect>()
+    val swings = mutableStateListOf<SwingEffect>()
+    val projectiles = mutableStateListOf<Projectile>()
+    val splashes = mutableStateListOf<SplashEffect>()
 
     var chickens by mutableStateOf(level.chickens)
         private set
@@ -109,9 +150,9 @@ class GameState(
     private var waveBreakTimer = 0f // thời gian nghỉ giữa 2 đợt
     private val random = Random(System.currentTimeMillis())
 
-    // Quái càng lên level càng trâu và chạy nhanh hơn (tốc độ tối đa gấp 2).
-    private val hpFactor: Float = 1f + 0.12f * (level.number - 1)
-    private val speedFactor: Float = minOf(1f + 0.04f * (level.number - 1), 2f)
+    // Quái càng lên level càng trâu (tối đa gấp 5) và chạy nhanh hơn (tối đa gấp 2).
+    private val hpFactor: Float = minOf(1f + 0.08f * (level.number - 1), 5f)
+    private val speedFactor: Float = minOf(1f + 0.03f * (level.number - 1), 2f)
 
     fun monsterRadiusPx(type: MonsterType): Float = 26f * density * type.radiusScale
 
@@ -198,8 +239,18 @@ class GameState(
             }
         }
 
+        // Đạn nước tới nơi thì bắn tung vệt nước.
+        val arrivedShots = projectiles.filter { now - it.bornMs > it.lifeMs }
+        for (p in arrivedShots) {
+            projectiles.remove(p)
+            splashes.add(SplashEffect(p.targetX, p.targetY, now))
+        }
+
         // Dọn hiệu ứng hết hạn.
         effects.removeAll { now - it.bornMs > it.lifeMs }
+        swings.removeAll { now - it.bornMs > it.lifeMs }
+        dying.removeAll { now - it.bornMs > it.lifeMs }
+        splashes.removeAll { now - it.bornMs > it.lifeMs }
     }
 
     private fun spawnMonster(typeId: String) {
@@ -223,7 +274,8 @@ class GameState(
     }
 
     // Chạm vào quái: gây sát thương theo vũ khí đang dùng.
-    // Trả về true nếu đánh trúng con quái nào đó.
+    // Trả về true nếu đánh trúng con quái nào đó. Gọi riêng cho từng ngón tay
+    // (chạm đa điểm) nên nhiều ngón chạm cùng lúc vẫn đánh trúng nhiều con.
     fun tap(x: Float, y: Float): Boolean {
         if (status != GameStatus.PLAYING) return false
         val now = System.currentTimeMillis()
@@ -241,13 +293,19 @@ class GameState(
         val m = best ?: return false
         m.hp -= weapon.damage
         m.flashUntilMs = now + 120
-        addEffect(m.x, m.y - monsterRadiusPx(m.type) - 8f * density, "-${weapon.damage}", 0xFFFFFFFF)
-        // Hiệu ứng vung vũ khí tại điểm chạm.
-        addEffect(x, y - 10f * density, weapon.emoji, 0xFFFFFFFF, lifeMs = 300, big = true)
+        // Hoạt ảnh vũ khí gõ xuống tại điểm chạm (súng nước thì bắn đạn thay vào đó).
+        if (weapon.id == "watergun") {
+            projectiles.add(
+                Projectile(x, y + 110f * density, m.x, m.y, now)
+            )
+        } else {
+            swings.add(SwingEffect(x, y, weapon, now))
+        }
         if (m.hp <= 0) {
             monsters.remove(m)
             kills++
             coinsEarned += m.coins
+            dying.add(DyingMonster(m.type, m.x, m.y, monsterRadiusPx(m.type), now))
             addEffect(m.x, m.y, "+${m.coins} xu", 0xFFFFD54F, big = true)
         }
         return true
